@@ -332,6 +332,7 @@
     .topo-text { color: var(--text-sub); line-height: 1.4; }
 
     .btn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
+    .btn-grid.tri { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .btn-grid:last-child { margin-bottom: 0; }
     .btn-sec { width: 100%; height: 46px; border-radius: 0; background: var(--input-bg); border: 1px solid var(--line); color: var(--text-sub); font-size: 14px; font-weight: 600; display: flex; justify-content: center; align-items: center; transition: all .15s; }
     .btn-sec:active { background: var(--panel2); color: var(--text); border-color: var(--accent); }
@@ -814,9 +815,10 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     </div>
     <pre id="codeOut"></pre>
     <div class="sheet-foot">
-        <div class="btn-grid">
+        <div class="btn-grid tri">
             <button class="btn-sec" id="btnCopyInside">复制代码</button>
             <button class="btn-sec" id="btnDownloadInside">下载文件</button>
+            <button class="btn-sec" id="btnTplFromCode">＋整机模板</button>
         </div>
     </div>
 </div>
@@ -4424,6 +4426,23 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     });
     $("btnCopyInside").addEventListener("click", quickCopy);
     $("btnDownloadInside").addEventListener("click", quickDownload);
+    // 把当前这份配置直接变成「整机模板」：名称/WiFi/配对码换成占位符，其余原样
+    $("btnTplFromCode").addEventListener("click", () => {
+        const y = buildYaml();
+        const tplYaml = y
+            .replace(/(friendly_name:\s*)".*?"/, '$1"{{deviceName}}"')
+            .replace(/(\n\s*ssid:\s*).*/, '$1"{{wifi_ssid}}"')
+            .replace(/(\n\s*password:\s*)".*?"/, '$1"{{wifi_pass}}"')
+            .replace(/(setup_code:\s*)".*?"/, '$1"{{hk_code}}"');
+        showTplEditor({
+            id: "tpl_" + Date.now().toString(36),
+            icon: "📦",
+            name: "我的整机",
+            sub: "",
+            vars: [],
+            yaml: tplYaml
+        });
+    });
     // 底部工具栏统一用 addEventListener：原来 btnCompile 同时挂了内联 onclick 和本监听，点一次会提交两次编译
     $("btnCode").addEventListener("click", openCode);
     $("btnCompile").addEventListener("click", smartCompile);
