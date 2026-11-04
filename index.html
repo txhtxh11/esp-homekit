@@ -120,6 +120,8 @@
     .seg-btn.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: 0 0 0 1px var(--line), 0 0 0 2px rgba(var(--accent-rgb), .18); }
     .seg-btn.on .desc { color: var(--on-accent); opacity: .68; }
     .seg-btn .desc.tip { color: var(--accent); font-weight: 700; }
+    .card .sub.tip { color: var(--accent); font-weight: 700; }
+    .card.on .sub.tip { color: var(--on-accent); opacity: .92; }
     .seg-btn.on .desc.tip { color: var(--on-accent); opacity: .95; }
     .seg-btn:disabled { opacity: .4; }
     /* 兜底：任何元素只要带 hidden 就必须不显示，避免被后来的 display:flex/grid 规则盖掉 */
@@ -1150,6 +1152,21 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     }
 
     /* ================= 渲染：芯片 ================= */
+    // 通用提示：把一句话写在某张卡的副标题位置 5 秒后还原（不弹 toast）
+    const cardTipTimers = new WeakMap();
+    function flashCardTip(card, msg) {
+        const sub = card && card.querySelector(".sub");
+        if (!sub) return;
+        if (!sub.dataset.orig) sub.dataset.orig = sub.textContent;
+        if (cardTipTimers.has(card)) clearTimeout(cardTipTimers.get(card));
+        sub.textContent = msg;
+        sub.classList.add("tip");
+        cardTipTimers.set(card, setTimeout(() => {
+            sub.textContent = sub.dataset.orig;
+            sub.classList.remove("tip");
+            cardTipTimers.delete(card);
+        }, 5000));
+    }
     // 点芯片卡时把提示直接显示在这张卡上 5 秒，不弹扩展卡
     let chipTipTimer = null;
     function flashChipTip(id, tip) {
@@ -1309,7 +1326,15 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             const btn = document.createElement("button");
             btn.className = "card" + (count ? " on has-count" : "") + (locked ? " locked" : "");
             btn.innerHTML = '<span class="ico">' + t.icon + '</span><span class="name">' + t.name + '</span><span class="sub">' + defaultPinText(type) + '</span>' + (count ? '<span class="count">' + count + '</span>' : '');
-            btn.addEventListener("click", () => addDevice(type));
+            btn.addEventListener("click", () => {
+                // 已有整机模板时通用设备不可加：提示直接写在点中的这张卡上 5 秒
+                if (locked) {
+                    const cmName = (cmDef(cmDev().type) || {}).name || "整机";
+                    flashCardTip(btn, "已加 " + cmName + " 整机");
+                    return;
+                }
+                addDevice(type);
+            });
             el.appendChild(btn);
         });
 
