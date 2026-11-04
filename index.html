@@ -609,6 +609,10 @@ window.__accentVars = function (hex) {
     } catch (e) { }
 })();
 </script>
+<!-- 接口基址：官方 Pages 走同源；GitHub Pages / file:// 打开时指向官方域（该域已放行跨域） -->
+<script>
+window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? "" : "https://esp-homekit.pages.dev";
+</script>
 </head>
 <body>
 
@@ -890,7 +894,7 @@ window.__accentVars = function (hex) {
     function pushTplCloud() {
         const key = tplCloudKey();
         if (!key || typeof window.fetch !== "function") return;
-        window.fetch("/api/tpl", {
+        window.fetch(window.__API_BASE + "/api/tpl", {
             method: "POST",
             headers: { "content-type": "application/json", "x-tpl-key": key },
             body: JSON.stringify({ templates: state.cmTemplates })
@@ -905,7 +909,7 @@ window.__accentVars = function (hex) {
     // 打开页面时把云端模板合并进来（本地同名/同 id 的优先，避免覆盖刚改的）
     function pullTplCloud() {
         if (typeof window.fetch !== "function") return;
-        window.fetch("/api/tpl", { cache: "no-store" })
+        window.fetch(window.__API_BASE + "/api/tpl", { cache: "no-store" })
             .then(r => (r.ok ? r.json() : null))
             .then(d => {
                 if (!d || !Array.isArray(d.templates) || !d.templates.length) return;
@@ -4230,7 +4234,7 @@ window.__accentVars = function (hex) {
             if (next.length < 4) { msg.textContent = "口令至少 4 位"; return; }
             msg.textContent = "设置中…";
             try {
-                const r = await window.fetch("/api/tpl/pass", {
+                const r = await window.fetch(window.__API_BASE + "/api/tpl/pass", {
                     method: "POST",
                     headers: { "content-type": "application/json" },
                     body: JSON.stringify({ old: tplCloudKey(), next: next })
@@ -4587,7 +4591,7 @@ window.__accentVars = function (hex) {
     h1.addEventListener("click", function () {
         if (busy) return;
         busy = true;
-        fetch("/api/pv?read=1", { cache: "no-store" })
+        fetch(window.__API_BASE + "/api/pv?read=1", { cache: "no-store" })
             .then(function (r) { if (!r.ok) throw 0; return r.json(); })
             .then(function (j) {
                 if (j && typeof j.count === "number") {
@@ -4605,7 +4609,7 @@ window.__accentVars = function (hex) {
     try {
         if (!sessionStorage.getItem("eh-pv-hit")) {
             sessionStorage.setItem("eh-pv-hit", "1");
-            fetch("/api/pv", { cache: "no-store" }).catch(function () { });
+            fetch(window.__API_BASE + "/api/pv", { cache: "no-store" }).catch(function () { });
         }
     } catch (e) { }
 })();
