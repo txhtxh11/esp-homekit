@@ -1,0 +1,2579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Esp+Homekit 生成器</title>
+<style>
+    :root {
+        --bg: #09090b;
+        --card: #18181b;
+        --border: #27272a;
+        --border-subtle: #1f1f23;
+        --accent: #a78bfa;
+        --accent-hover: #c4b5fd;
+        --text: #fafafa;
+        --text-secondary: #a1a1aa;
+        --text-muted: #71717a;
+        --input-bg: #18181b;
+        --input-border: #27272a;
+        --input-focus: #a78bfa;
+        --pre-bg: #0c0a09;
+        --pre-border: #27272a;
+        --del-color: #fca5a5;
+        --del-border: #7f1d1d;
+        --del-hover-bg: #1c1016;
+        --toast-bg: #18181b;
+        --toast-border: #27272a;
+        --btn-bg: #27272a;
+        --btn-border: #3f3f46;
+        --btn-hover-bg: #3f3f46;
+        --btn-hover-border: #52525b;
+        --preset-bg: transparent;
+        --preset-border: #3f3f46;
+        --preset-hover-bg: #27272a;
+        --badge-bg: #1c1836;
+        --badge-off-bg: #361818;
+        --glow: 0 0 0 3px rgba(167,139,250,0.15);
+    }
+    [data-theme="light"] {
+        --bg: #fafafa;
+        --card: #ffffff;
+        --border: #e4e4e7;
+        --border-subtle: #f4f4f5;
+        --accent: #6366f1;
+        --accent-hover: #4f46e5;
+        --text: #18181b;
+        --text-secondary: #52525b;
+        --text-muted: #a1a1aa;
+        --input-bg: #ffffff;
+        --input-border: #e4e4e7;
+        --input-focus: #6366f1;
+        --pre-bg: #f4f4f5;
+        --pre-border: #e4e4e7;
+        --del-color: #dc2626;
+        --del-border: #fca5a5;
+        --del-hover-bg: #fef2f2;
+        --toast-bg: #ffffff;
+        --toast-border: #e4e4e7;
+        --btn-bg: #f4f4f5;
+        --btn-border: #e4e4e7;
+        --btn-hover-bg: #e4e4e7;
+        --btn-hover-border: #d4d4d8;
+        --preset-bg: transparent;
+        --preset-border: #d4d4d8;
+        --preset-hover-bg: #f4f4f5;
+        --badge-bg: #e0e7ff;
+        --badge-off-bg: #fee2e2;
+        --glow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+    [data-theme="auto"] {
+        --bg: #fafafa;
+        --card: #ffffff;
+        --border: #e4e4e7;
+        --border-subtle: #f4f4f5;
+        --accent: #6366f1;
+        --accent-hover: #4f46e5;
+        --text: #18181b;
+        --text-secondary: #52525b;
+        --text-muted: #a1a1aa;
+        --input-bg: #ffffff;
+        --input-border: #e4e4e7;
+        --input-focus: #6366f1;
+        --pre-bg: #f4f4f5;
+        --pre-border: #e4e4e7;
+        --del-color: #dc2626;
+        --del-border: #fca5a5;
+        --del-hover-bg: #fef2f2;
+        --toast-bg: #ffffff;
+        --toast-border: #e4e4e7;
+        --btn-bg: #f4f4f5;
+        --btn-border: #e4e4e7;
+        --btn-hover-bg: #e4e4e7;
+        --btn-hover-border: #d4d4d8;
+        --preset-bg: transparent;
+        --preset-border: #d4d4d8;
+        --preset-hover-bg: #f4f4f5;
+        --badge-bg: #e0e7ff;
+        --badge-off-bg: #fee2e2;
+        --glow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+    @media (prefers-color-scheme: dark) {
+        [data-theme="auto"] {
+            --bg: #09090b;
+            --card: #18181b;
+            --border: #27272a;
+            --border-subtle: #1f1f23;
+            --accent: #a78bfa;
+            --accent-hover: #c4b5fd;
+            --text: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --input-bg: #18181b;
+            --input-border: #27272a;
+            --input-focus: #a78bfa;
+            --pre-bg: #0c0a09;
+            --pre-border: #27272a;
+            --del-color: #fca5a5;
+            --del-border: #7f1d1d;
+            --del-hover-bg: #1c1016;
+            --toast-bg: #18181b;
+            --toast-border: #27272a;
+            --btn-bg: #27272a;
+            --btn-border: #3f3f46;
+            --btn-hover-bg: #3f3f46;
+            --btn-hover-border: #52525b;
+            --preset-bg: transparent;
+            --preset-border: #3f3f46;
+            --preset-hover-bg: #27272a;
+            --badge-bg: #1c1836;
+            --badge-off-bg: #361818;
+            --glow: 0 0 0 3px rgba(167,139,250,0.15);
+        }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, sans-serif;
+        line-height: 1.6;
+        transition: background 0.15s ease, color 0.15s ease;
+        min-height: 100vh;
+        overflow-y: scroll;
+    }
+
+    /* Container */
+    .main-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 0 20px 60px;
+    }
+
+    /* ===== Header Bar ===== */
+    .header-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 32px;
+        position: sticky;
+        top: 0;
+        background: var(--bg);
+        z-index: 100;
+        backdrop-filter: blur(12px);
+    }
+    .header-left {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .header-left > div {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+    .header-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text);
+        letter-spacing: -0.02em;
+    }
+    .header-badge {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        background: var(--btn-bg);
+        padding: 2px 8px;
+        border-radius: 12px;
+        letter-spacing: 0.05em;
+    }
+    .header-subtitle {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        font-weight: 400;
+        font-family: 'Consolas', 'Fira Code', monospace;
+    }
+    .header-right {
+        display: flex;
+        gap: 4px;
+    }
+    .theme-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 1px solid transparent;
+        background: transparent;
+        cursor: pointer;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+        color: var(--text-muted);
+    }
+    .theme-btn:hover {
+        background: var(--btn-bg);
+        color: var(--text);
+    }
+    .theme-btn.active {
+        background: var(--btn-bg);
+        border-color: var(--btn-border);
+        color: var(--text);
+    }
+
+    /* ===== Quick Generate Card ===== */
+    .quick-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 32px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    .quick-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 24px;
+    }
+    .gpio-input-wrap {
+        margin-bottom: 16px;
+    }
+    .quick-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: 20px;
+        font-weight: 500;
+    }
+    .quick-label .accent-dot {
+        color: var(--accent);
+    }
+    .wifi-row {
+        display: flex;
+        gap: 12px;
+        max-width: 480px;
+        margin: 0 auto;
+    }
+    .wifi-field {
+        flex: 1;
+    }
+    .wifi-field input {
+        width: 100%;
+        padding: 10px 14px;
+        font-size: 0.875rem;
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        border-radius: 10px;
+        color: var(--text);
+        font-family: system-ui, -apple-system, sans-serif;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        outline: none;
+    }
+    .wifi-field input::placeholder { color: var(--text-muted); }
+    .wifi-field input:focus {
+        border-color: var(--input-focus);
+        box-shadow: var(--glow);
+    }
+
+    @media (max-width: 520px) {
+        .wifi-row { flex-direction: column; }
+        .gpio-input { width: 140px; height: 64px; font-size: 1.6rem; }
+        .quick-card { padding: 24px 16px; }
+    }
+
+    /* ===== Preset Pills ===== */
+    .preset-bar {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 24px;
+    }
+    .preset-pill {
+        padding: 6px 16px;
+        border-radius: 24px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        background: var(--preset-bg);
+        border: 1px solid var(--preset-border);
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-family: system-ui, -apple-system, sans-serif;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+    .preset-pill:hover {
+        background: var(--preset-hover-bg);
+        border-color: var(--btn-border);
+        color: var(--text);
+    }
+    .preset-pill.clear-pill {
+        border-color: var(--del-border);
+        color: var(--del-color);
+    }
+    .preset-pill.clear-pill:hover {
+        background: var(--del-hover-bg);
+        border-color: var(--del-color);
+    }
+    .preset-mini {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 500;
+        background: var(--preset-bg);
+        border: 1px solid var(--preset-border);
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-family: system-ui, -apple-system, sans-serif;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+    .preset-mini:hover {
+        background: var(--preset-hover-bg);
+        border-color: var(--btn-border);
+        color: var(--text);
+    }
+
+    /* ===== YAML Preview ===== */
+    .yaml-section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+    .yaml-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border-subtle);
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .yaml-section-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+    .yaml-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .yaml-btn {
+        padding: 6px 8px;
+        border-radius: 6px;
+        font-size: 0.88rem;
+        font-weight: 500;
+        background: var(--btn-bg);
+        border: 1px solid var(--btn-border);
+        color: var(--text);
+        cursor: pointer;
+        font-family: system-ui, -apple-system, sans-serif;
+        transition: all 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .yaml-btn:hover {
+        background: var(--btn-hover-bg);
+        border-color: var(--btn-hover-border);
+    }
+    .yaml-btn.primary {
+        background: var(--btn-bg);
+        border-color: transparent;
+        color: var(--text);
+    }
+    .yaml-btn.primary:hover {
+        background: var(--btn-hover-bg);
+    }
+    .yaml-link-btn {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        font-weight: 500;
+        background: var(--btn-bg);
+        border: 1px solid var(--btn-border);
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-family: system-ui, -apple-system, sans-serif;
+        transition: all 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .yaml-link-btn:hover { background: var(--btn-hover-bg); color: var(--text); }
+    .yaml-link-edit {
+        cursor: pointer;
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        transition: color 0.15s ease;
+        padding: 4px 6px;
+        border-radius: 6px;
+    }
+    .yaml-link-edit:hover { color: var(--text); background: var(--btn-bg); }
+
+    .yaml-code-block {
+        padding: 20px;
+        overflow-x: auto;
+    }
+    .yaml-code-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: nowrap;
+        padding: 12px 20px;
+    }
+    .yaml-code-actions .yaml-btn {
+        flex: 1;
+        justify-content: center;
+        text-align: center;
+    }
+    .yaml-code-block pre {
+        background: var(--pre-bg);
+        border: 1px solid var(--pre-border);
+        border-radius: 8px;
+        padding: 20px;
+        font-family: 'Fira Code', 'Consolas', 'SF Mono', monospace;
+        font-size: 0.8rem;
+        line-height: 1.55;
+        color: var(--text);
+        white-space: pre-wrap;
+        min-height: 300px;
+        max-height: 60vh;
+        overflow: auto;
+    }
+    .yaml-links-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border-top: 1px solid var(--border-subtle);
+        flex-wrap: wrap;
+    }
+    .yaml-links-label {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        margin-right: 4px;
+    }
+
+    /* ===== Advanced Settings ===== */
+    .adv-section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 14px;
+    }
+    .adv-toggle-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        cursor: pointer;
+        user-select: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text);
+        transition: background 0.15s ease;
+    }
+    .adv-toggle-bar:hover { background: var(--btn-bg); }
+    .adv-toggle-arrow {
+        font-size: 0.65rem;
+        transition: transform 0.15s ease;
+        color: var(--text-muted);
+    }
+    .adv-section.open .adv-toggle-arrow { transform: rotate(90deg); }
+    .adv-content {
+        display: none;
+        padding: 0 20px 20px;
+    }
+    .adv-section.open .adv-content { display: block; }
+
+    /* Sub-panels */
+    .sub-panel {
+        margin-bottom: 10px;
+        border-radius: 10px;
+        border: 1px solid var(--border-subtle);
+        overflow: hidden;
+    }
+    .sub-panel-header {
+        padding: 12px 16px;
+        cursor: pointer;
+        user-select: none;
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.15s ease, color 0.15s ease;
+    }
+    .sub-panel-header:hover { background: var(--btn-bg); color: var(--text); }
+    .sub-panel-arrow {
+        font-size: 0.6rem;
+        transition: transform 0.15s ease;
+        flex-shrink: 0;
+    }
+    .sub-panel.open .sub-panel-arrow { transform: rotate(90deg); }
+    .sub-panel-content {
+        display: none;
+        padding: 12px 16px 16px;
+        border-top: 1px solid var(--border-subtle);
+    }
+    .sub-panel.open .sub-panel-content { display: block; }
+
+    /* Form Elements */
+    .form-row { margin: 10px 0; }
+    .form-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+    .form-label strong { color: var(--text); }
+    .form-input, .form-select {
+        width: 100%;
+        padding: 9px 12px;
+        font-size: 0.85rem;
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        border-radius: 8px;
+        color: var(--text);
+        font-family: system-ui, -apple-system, sans-serif;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        outline: none;
+    }
+    .form-input:focus, .form-select:focus {
+        border-color: var(--input-focus);
+        box-shadow: var(--glow);
+    }
+    .form-input.mono { font-family: 'Consolas', 'SF Mono', monospace; }
+    .time-input-row { display: flex; gap: 8px; align-items: center; }
+    .never-btn {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        background: transparent;
+        border: 1px solid var(--del-border);
+        color: var(--del-color);
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.15s ease;
+        font-family: system-ui, -apple-system, sans-serif;
+    }
+    .never-btn:hover { background: var(--del-hover-bg); }
+
+    .inline-check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 8px 0;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
+    .inline-check input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+
+    /* Buttons */
+    .btn-submit {
+        width: 100%;
+        padding: 10px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        background: var(--btn-bg);
+        border: 1px solid var(--btn-border);
+        color: var(--text);
+        cursor: pointer;
+        font-family: system-ui, -apple-system, sans-serif;
+        transition: all 0.15s ease;
+        margin-top: 4px;
+    }
+    .btn-submit:hover { background: var(--btn-hover-bg); border-color: var(--btn-hover-border); }
+    button:active { transform: scale(0.98); }
+
+    /* Item list */
+    .item-list { margin-top: 4px; }
+    .item-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--border-subtle);
+        margin-top: 6px;
+        font-size: 0.8rem;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .item-del {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        background: transparent;
+        border: 1px solid var(--del-border);
+        color: var(--del-color);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: system-ui, -apple-system, sans-serif;
+        white-space: nowrap;
+    }
+    .item-del:hover { background: var(--del-hover-bg); }
+
+    .item-edit {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        background: transparent;
+        border: 1px solid var(--accent);
+        color: var(--accent);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: system-ui, -apple-system, sans-serif;
+        white-space: nowrap;
+    }
+    .item-edit:hover { background: var(--badge-bg); }
+
+    .item-row-buttons {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .entity-badge {
+        font-size: 0.62rem;
+        padding: 2px 8px;
+        border-radius: 12px;
+        background: var(--badge-bg);
+        color: var(--accent);
+    }
+    .entity-badge.off {
+        background: var(--badge-off-bg);
+        color: var(--del-color);
+    }
+
+    /* Form card inside advanced */
+    .form-card {
+        background: var(--bg);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 12px;
+        border: 1px solid var(--border-subtle);
+    }
+    .form-card-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 12px;
+    }
+
+    /* HomeKit entity list */
+    .hk-entity-list {
+        max-height: 220px;
+        overflow-y: auto;
+        background: var(--bg);
+        border-radius: 8px;
+        border: 1px solid var(--border-subtle);
+        padding: 8px;
+        margin: 8px 0;
+    }
+    .hk-entity-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border-subtle);
+        font-size: 0.78rem;
+    }
+    .hk-entity-item:last-child { border-bottom: none; }
+    .hk-entity-item input[type="checkbox"] { width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; }
+    .hk-entity-item label {
+        flex: 1;
+        cursor: pointer;
+        font-family: 'Consolas', 'SF Mono', monospace;
+        font-size: 0.7rem;
+        white-space: nowrap;
+        overflow-x: auto;
+        color: var(--text);
+    }
+    .hk-entity-type {
+        font-size: 0.62rem;
+        background: var(--badge-bg);
+        padding: 2px 8px;
+        border-radius: 12px;
+        color: var(--accent);
+        min-width: 50px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    /* Footer */
+    .footer-bar {
+        text-align: center;
+        padding: 32px 0 20px;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        border-top: 1px solid var(--border-subtle);
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .footer-bar .cm-btns {
+        display: flex;
+        gap: 8px;
+    }
+    .footer-bar .cm-btn {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.68rem;
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        font-family: system-ui, -apple-system, sans-serif;
+        text-decoration: none;
+    }
+    .footer-bar .cm-btn:hover { background: var(--btn-bg); color: var(--text); }
+
+    #busuanzi_container_site_pv { display: none !important; }
+
+    /* Help section */
+    .help-inner {
+        padding: 20px;
+        line-height: 1.7;
+        color: var(--text);
+        font-size: 0.88rem;
+    }
+    .help-intro {
+        color: var(--text-secondary);
+        margin: 0 0 20px 0;
+        font-size: 0.85rem;
+    }
+    .help-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .help-card {
+        background: var(--bg);
+        border: 1px solid var(--border-subtle);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .help-card-head {
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 10px 14px;
+        background: var(--card);
+        border-bottom: 1px solid var(--border-subtle);
+        color: var(--text);
+    }
+    .help-card-body {
+        padding: 10px 14px;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
+    .help-card-body p {
+        margin: 0 0 6px 0;
+    }
+    .help-card-body p:last-child { margin-bottom: 0; }
+    .help-step {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 700;
+        margin-right: 6px;
+        flex-shrink: 0;
+    }
+    .help-tips {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .help-tip {
+        padding: 8px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--border-subtle);
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        background: var(--bg);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* Toast */
+    #toastContainer {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+        max-width: 360px;
+    }
+    .toast {
+        background: var(--toast-bg);
+        border: 1px solid var(--toast-border);
+        color: var(--text);
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-size: 0.82rem;
+        font-weight: 500;
+        animation: toastIn 0.3s ease, toastOut 0.3s ease 2.2s forwards;
+        pointer-events: auto;
+        font-family: system-ui, -apple-system, sans-serif;
+    }
+    @keyframes toastIn { from { opacity:0; transform: translateX(40px); } to { opacity:1; transform: translateX(0); } }
+    @keyframes toastOut { from { opacity:1; } to { opacity:0; transform: translateX(40px); } }
+    .form-hint { font-size: 0.72rem; color: #888; margin-top: 2px; }
+</style>
+</head>
+<body data-theme="light">
+    <div id="toastContainer"></div>
+
+    <div class="main-container">
+
+        <!-- ===== HEADER BAR ===== -->
+        <div class="header-bar">
+            <div class="header-left">
+                <div>
+                    <span class="header-title">Esp+Homekit 生成器</span>
+                    <span class="header-badge">v1</span>
+                </div>
+                <span class="header-subtitle">esp8266/esp32</span>
+            </div>
+            <div class="header-right">
+                <select class="form-select" id="themeSelect" onchange="setTheme(this.value)" style="width:80px; font-size:0.85rem;">
+                    <option value="light">浅色</option>
+                    <option value="dark">深色</option>
+                    <option value="auto">自动</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- ===== QUICK GENERATE CARD ===== -->
+        <div class="quick-card">
+            <div class="quick-title">选择 GPIO 引脚</div>
+            <div class="gpio-input-wrap">
+                <select id="quick_gpio" class="form-select" style="width:140px; font-size:1.4rem; font-weight:700; text-align:center;">
+                    <option value="0">GPIO 0</option><option value="1">GPIO 1</option><option value="2" selected>GPIO 2</option><option value="3">GPIO 3</option><option value="4">GPIO 4</option>
+                    <option value="5">GPIO 5</option><option value="6">GPIO 6</option><option value="7">GPIO 7</option><option value="8">GPIO 8</option><option value="9">GPIO 9</option>
+                    <option value="10">GPIO 10</option><option value="11">GPIO 11</option><option value="12">GPIO 12</option><option value="13">GPIO 13</option><option value="14">GPIO 14</option>
+                    <option value="15">GPIO 15</option><option value="16">GPIO 16</option><option value="17">GPIO 17</option><option value="18">GPIO 18</option><option value="19">GPIO 19</option>
+                    <option value="20">GPIO 20</option><option value="21">GPIO 21</option><option value="22">GPIO 22</option><option value="23">GPIO 23</option><option value="24">GPIO 24</option>
+                    <option value="25">GPIO 25</option><option value="26">GPIO 26</option><option value="27">GPIO 27</option><option value="28">GPIO 28</option><option value="29">GPIO 29</option>
+                    <option value="30">GPIO 30</option><option value="31">GPIO 31</option><option value="32">GPIO 32</option><option value="33">GPIO 33</option><option value="34">GPIO 34</option>
+                    <option value="35">GPIO 35</option><option value="36">GPIO 36</option><option value="37">GPIO 37</option><option value="38">GPIO 38</option><option value="39">GPIO 39</option>
+                </select>
+            </div>
+            <div class="quick-label" id="quickLabel">
+                GPIO2 开关 <span class="accent-dot">·</span> HomeKit 已就绪
+            </div>
+            <div class="wifi-row">
+                <div class="wifi-field">
+                    <input id="ssid" type="text" placeholder="WiFi 名称 · 可留空用AP热点配网" value="">
+                </div>
+                <div class="wifi-field">
+                    <input id="pwd" type="password" placeholder="WiFi 密码 · 可选" value="">
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 操作按钮 ===== -->
+        <div class="yaml-code-actions" style="display:flex; align-items:center; gap:4px; padding:0 0 10px 0; border-bottom:none;">
+            <button class="yaml-btn primary" id="copyBtn">📋 复制</button>
+            <button class="yaml-btn primary" id="downloadBtn">💾 下载</button>
+            <button class="yaml-btn primary" id="compileBtn">🔧 编译</button>
+            <button class="yaml-btn primary" id="flashBtn" title="用本站烧录服务直接烧录">🔥 烧录</button>
+            <button class="yaml-btn primary" id="thirdPartyBtn" title="打开第三方烧录站 web.esphome.io">🌐 第三方烧录</button>
+        </div>
+        <div id="compileStatus" style="display:none; align-items:center; gap:8px; padding:6px 12px; margin:0 0 8px 0; background:var(--bg-card); border-radius:8px; font-size:0.85rem; color:var(--text-primary);">
+            <span id="compileMsg"></span>
+            <button id="cancelCompileBtn" style="margin-left:auto; padding:3px 10px; background:#e74c3c; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.78rem;">取消</button>
+        </div>
+        <div id="flashCard" style="display:none; margin:0 0 10px 0; background:var(--bg-card); border:1px solid var(--border); border-radius:12px; overflow:hidden;">
+            <div style="display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--border);">
+                <strong style="font-size:0.9rem;">🔥 在线烧录</strong>
+                <a id="flashCardExternal" href="#" target="_blank" style="margin-left:auto; font-size:0.78rem; color:var(--accent); text-decoration:none;">新窗口打开</a>
+                <button id="flashCardClose" style="padding:4px 10px; border:1px solid var(--border); background:transparent; color:var(--text-primary); border-radius:6px; cursor:pointer; font-size:0.8rem;">收起</button>
+            </div>
+            <iframe id="flashFrame" allow="usb; serial; fullscreen" style="display:block; width:100%; height:660px; border:0; background:#0f172a;"></iframe>
+        </div>
+
+        <!-- ===== ADVANCED SETTINGS ===== -->
+        <div class="adv-section" id="advSection">
+            <div class="adv-toggle-bar" onclick="toggleAdvSection()">
+                <span class="adv-toggle-arrow">▶</span>
+                ⚙️ 高级设置
+            </div>
+            <div class="adv-content" id="advContent">
+
+                <!-- Controller Management -->
+                <div class="form-card" id="ctrlMgmt">
+                    <div class="form-card-title">➕ 添加控制器</div>
+                    <div class="form-row"><div class="form-label">名称 (留空=自动)</div><input class="form-input" id="new_ctrl_name" placeholder="GPIOx开关"></div>
+                    <div class="form-row"><div class="form-label">类型</div><select class="form-select" id="new_ctrl_type" onchange="onCtrlTypeChange()"><option value="switch">开关 Switch</option><option value="light">灯 Light</option><option value="socket">插座 Outlet</option></select></div>
+                    <div class="form-row"><div class="form-label">GPIO 引脚</div><select class="form-select" id="new_ctrl_gpio" style="width:100%; font-weight:600;">
+                        <option value="0">GPIO 0</option><option value="1">GPIO 1</option><option value="2">GPIO 2</option><option value="3">GPIO 3</option><option value="4" selected>GPIO 4</option>
+                        <option value="5">GPIO 5</option><option value="6">GPIO 6</option><option value="7">GPIO 7</option><option value="8">GPIO 8</option><option value="9">GPIO 9</option>
+                        <option value="10">GPIO 10</option><option value="11">GPIO 11</option><option value="12">GPIO 12</option><option value="13">GPIO 13</option><option value="14">GPIO 14</option>
+                        <option value="15">GPIO 15</option><option value="16">GPIO 16</option><option value="17">GPIO 17</option><option value="18">GPIO 18</option><option value="19">GPIO 19</option>
+                        <option value="20">GPIO 20</option><option value="21">GPIO 21</option><option value="22">GPIO 22</option><option value="23">GPIO 23</option><option value="24">GPIO 24</option>
+                        <option value="25">GPIO 25</option><option value="26">GPIO 26</option><option value="27">GPIO 27</option><option value="28">GPIO 28</option><option value="29">GPIO 29</option>
+                        <option value="30">GPIO 30</option><option value="31">GPIO 31</option><option value="32">GPIO 32</option><option value="33">GPIO 33</option><option value="34">GPIO 34</option>
+                        <option value="35">GPIO 35</option><option value="36">GPIO 36</option><option value="37">GPIO 37</option><option value="38">GPIO 38</option><option value="39">GPIO 39</option>
+                    </select></div>
+                    <div class="form-row" style="cursor:pointer; color:var(--accent); font-size:0.8rem;" id="ctrlAdvToggle" onclick="toggleAdvSettings()">⚙️ 高级选项 ▾</div>
+                    <div id="ctrlAdvancedSettings" style="display:none; margin-top:8px; padding:10px; border:1px solid var(--border-subtle); border-radius:8px;">
+                        <div class="form-row"><div class="form-label">反向输出</div><select class="form-select" id="new_ctrl_invert"><option value="false">常规</option><option value="true">反向</option></select></div>
+                        <div class="form-row"><div class="form-label">初始电平</div><select class="form-select" id="new_ctrl_init_level"><option value="ALWAYS_ON">高电平</option><option value="ALWAYS_OFF" selected>低电平</option></select></div>
+                        <div class="inline-check"><input type="checkbox" id="ctrl_wifi_indicator"><label>🔵 WiFi指示灯 (断网亮，联网灭)</label></div>
+                        <div class="form-row"><div class="form-label">联动目标 (同时开/关)</div><select class="form-select" id="ctrl_follow_target"><option value="">无联动</option></select></div>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <button class="btn-submit" id="ctrlSubmitBtn" onclick="addController()">添加</button>
+                        <button class="btn-submit" id="ctrlCancelBtn" onclick="cancelEditController()" style="display:none; background:var(--btn-bg);">取消编辑</button>
+                    </div>
+                    <div id="ctrl_list_container" class="item-list"></div>
+                </div>
+
+                <!-- Button Management -->
+                <div class="form-card" id="btnMgmt">
+                    <div class="form-card-title">🔘 添加物理按键</div>
+                    <div class="form-row"><div class="form-label">按键名称 (留空=自动)</div><input class="form-input" id="new_btn_name" placeholder="GPIOx按键"></div>
+                    <div class="form-row"><div class="form-label">GPIO 引脚</div><select class="form-select" id="new_btn_gpio" style="width:100%; font-weight:600;">
+                        <option value="0" selected>GPIO 0</option><option value="1">GPIO 1</option><option value="2">GPIO 2</option><option value="3">GPIO 3</option><option value="4">GPIO 4</option>
+                        <option value="5">GPIO 5</option><option value="6">GPIO 6</option><option value="7">GPIO 7</option><option value="8">GPIO 8</option><option value="9">GPIO 9</option>
+                        <option value="10">GPIO 10</option><option value="11">GPIO 11</option><option value="12">GPIO 12</option><option value="13">GPIO 13</option><option value="14">GPIO 14</option>
+                        <option value="15">GPIO 15</option><option value="16">GPIO 16</option><option value="17">GPIO 17</option><option value="18">GPIO 18</option><option value="19">GPIO 19</option>
+                        <option value="20">GPIO 20</option><option value="21">GPIO 21</option><option value="22">GPIO 22</option><option value="23">GPIO 23</option><option value="24">GPIO 24</option>
+                        <option value="25">GPIO 25</option><option value="26">GPIO 26</option><option value="27">GPIO 27</option><option value="28">GPIO 28</option><option value="29">GPIO 29</option>
+                        <option value="30">GPIO 30</option><option value="31">GPIO 31</option><option value="32">GPIO 32</option><option value="33">GPIO 33</option><option value="34">GPIO 34</option>
+                        <option value="35">GPIO 35</option><option value="36">GPIO 36</option><option value="37">GPIO 37</option><option value="38">GPIO 38</option><option value="39">GPIO 39</option>
+                    </select></div>
+                    <div class="form-row"><div class="form-label">控制目标</div><select class="form-select" id="btn_target_select"><option value="__disabled__">不启用</option></select></div>
+                    <div class="form-row"><div class="form-label">动作</div><select class="form-select" id="new_btn_action"><option value="toggle">切换 Toggle</option><option value="turn_on">打开 On</option><option value="turn_off">关闭 Off</option></select></div>
+                    <button class="btn-submit" onclick="addButtonMapping()">添加按键</button>
+                    <div id="btn_list_container" class="item-list"></div>
+                </div>
+
+                <!-- 设备 & 芯片 -->
+                <div class="sub-panel" id="subBoard">
+                    <div class="sub-panel-header" onclick="toggleSubPanel('subBoard')">
+                        <span class="sub-panel-arrow">▶</span> 🔧 设备 & 芯片
+                    </div>
+                    <div class="sub-panel-content">
+                        <div class="form-row"><div class="form-label"><strong>设备名称</strong> · 小写字母/数字/下划线</div><input class="form-input mono" id="device_name" value="esp_homekit_device"></div>
+                        <div class="form-row"><div class="form-label"><strong>芯片平台</strong></div><select class="form-select" id="platform" onchange="onPlatformChange()"><option value="esp8266">ESP8266</option><option value="esp32">ESP32</option></select></div>
+                        <div class="form-row"><div class="form-label"><strong>开发板型号</strong></div>
+                            <select class="form-select" id="board_select">
+                                <!-- ESP8266 选项 -->
+                                <option value="nodemcuv2" data-platform="esp8266">NodeMCU V2 (ESP-12E, 4MB)</option>
+                                <option value="d1_mini" data-platform="esp8266">Wemos D1 Mini (4MB)</option>
+                                <option value="esp01_1m" data-platform="esp8266">ESP-01 / ESP-01S (1MB)</option>
+                                <option value="esp8285" data-platform="esp8266">ESP8285 通用 (1MB)</option>
+                                <!-- ESP32 选项 -->
+                                <option value="esp32dev" data-platform="esp32">ESP32 通用开发板 (4MB)</option>
+                                <option value="esp32-c3-devkitm-1" data-platform="esp32">ESP32-C3-DevKitM-1 (4MB)</option>
+                                <option value="esp32-s3-devkitc-1" data-platform="esp32">ESP32-S3-DevKitC-1 (8MB)</option>
+                                <option value="wemos_d1_mini32" data-platform="esp32">Wemos D1 Mini ESP32 (4MB)</option>
+                                <option value="esp32-c6-devkitc-1" data-platform="esp32">ESP32-C6-DevKitC-1 (4MB)</option>
+                                <!-- 共用 -->
+                                <option value="custom" data-platform="">自定义</option>
+                            </select>
+                            <input class="form-input mono" id="board_custom" placeholder="输入自定义板型ID" style="display:none; margin-top:8px;">
+                        </div>
+                        <div class="form-row"><div class="form-label"><strong>Flash 大小</strong></div><select class="form-select" id="flash_size"><option value="1MB">1MB</option><option value="2MB">2MB</option><option value="4MB" selected>4MB (默认)</option><option value="8MB">8MB</option></select></div>
+                        <div class="form-row"><div class="form-label"><strong>状态恢复</strong></div><select class="form-select" id="restore_flash"><option value="true">启用</option><option value="false">禁用</option><option value="none">不设置</option></select></div>
+                        <div class="form-row"><div class="form-label"><strong>防重名 (MAC后缀)</strong></div><select class="form-select" id="name_strategy"><option value="true">启用</option><option value="false">关闭</option></select></div>
+                    </div>
+                </div>
+
+                <!-- WiFi 高级 -->
+                <div class="sub-panel" id="subWifi">
+                    <div class="sub-panel-header" onclick="toggleSubPanel('subWifi')">
+                        <span class="sub-panel-arrow">▶</span> 📶 WiFi 高级
+                    </div>
+                    <div class="sub-panel-content">
+                        <div class="form-row"><div class="form-label"><strong>AP 热点名称</strong> (应急配网)</div><input class="form-input mono" id="ap_ssid" value="ESPHome-Hotspot"></div>
+                        <div class="form-row"><div class="form-label"><strong>AP 热点密码</strong> (留空为开放)</div><input class="form-input" id="ap_pwd" type="password" value=""></div>
+                        <div class="form-row"><div class="form-label"><strong>快速连接</strong> · 跳过扫描直接连接上次WiFi，加速启动</div><select class="form-select" id="fast_connect"><option value="true">启用</option><option value="false">关闭</option><option value="none" selected>不设置</option></select></div>
+                        <div class="form-row"><div class="form-label"><strong>WiFi 重启超时</strong> · 可选 5min</div><div class="time-input-row"><input class="form-input mono" id="wifi_reboot_timeout" value="0s" style="flex:1;"><button type="button" class="never-btn" onclick="setNeverValue('wifi_reboot_timeout','5min')">5min</button></div></div>
+                        <div class="form-row"><div class="form-label"><strong>强制门户 (配网页面)</strong></div><select class="form-select" id="captive_portal_enable"><option value="true">启用</option><option value="false">关闭</option></select></div>
+                        <div class="form-row"><div class="form-label"><strong>强制802.11G</strong> · 兼容旧设备</div><select class="form-select" id="force_11g"><option value="true" selected>开启</option><option value="false">关闭</option></select></div>
+                    </div>
+                </div>
+
+                <!-- 核心服务 -->
+                <div class="sub-panel" id="subCore">
+                    <div class="sub-panel-header" onclick="toggleSubPanel('subCore')">
+                        <span class="sub-panel-arrow">▶</span> ⚡ 核心服务
+                    </div>
+                    <div class="sub-panel-content">
+                        <div class="form-row"><select class="form-select" id="logger"><option value="INFO" selected>Logger: INFO</option><option value="DEBUG">Logger: DEBUG</option><option value="off">Logger: 关闭</option></select></div>
+                        <div class="form-row"><select class="form-select" id="api"><option value="1">Home Assistant API: 启用</option><option value="0">Home Assistant API: 禁用</option></select></div>
+                        <div class="form-row"><div class="form-label"><strong>API 重启超时</strong> · 可选 5min</div><div class="time-input-row"><input class="form-input mono" id="api_reboot_timeout" value="0s" style="flex:1;"><button type="button" class="never-btn" onclick="setNeverValue('api_reboot_timeout','5min')">5min</button></div></div>
+                        <div class="form-row"><select class="form-select" id="ota"><option value="1">OTA: 启用</option><option value="0">OTA: 禁用</option></select></div>
+                        <div class="form-row"><select class="form-select" id="web"><option value="1">Web Server: 启用</option><option value="0">Web Server: 禁用</option></select></div>
+                        <div class="form-row" id="webSettingsRow" style="display:none;">
+                            <div class="form-label">Web 端口</div><input class="form-input mono" id="web_port" type="number" value="80">
+                            <div class="form-label" style="margin-top:8px;">Web 版本</div><select class="form-select" id="web_version"><option value="1">版本1</option><option value="2">版本2</option><option value="3">版本3</option></select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HomeKit 设置 -->
+                <div class="sub-panel" id="subHomekit">
+                    <div class="sub-panel-header" onclick="toggleSubPanel('subHomekit')">
+                        <span class="sub-panel-arrow">▶</span> 🏠 HomeKit 设置
+                    </div>
+                    <div class="sub-panel-content">
+                        <div class="form-row"><select class="form-select" id="hk_enable" onchange="onHkEnableChange()"><option value="1">启用 HomeKit</option><option value="0">关闭 HomeKit</option></select></div>
+                        <div id="homekitDetails" style="display:block;">
+                            <div class="form-row"><div class="form-label"><strong>组件 ID</strong></div><input class="form-input mono" id="hk_id" value="my_hk"></div>
+                            <div class="form-row"><div class="form-label"><strong>配对码</strong> · 默认 111-22-333</div>
+                                <div style="display:flex; gap:8px;">
+                                    <input class="form-input mono" id="hk_code" value="111-22-333" style="flex:1;">
+                                    <button type="button" class="never-btn" onclick="generateRandomCode()" title="生成随机配对码" style="border-color:var(--accent);color:var(--accent);">🎲 随机</button>
+                                </div>
+                            </div>
+                            <div class="form-row"><div class="form-label"><strong>选择 HomeKit 实体</strong> (勾选=添加到HomeKit)</div>
+                                <div id="hkEntityListContainer" class="hk-entity-list"><div style="color:var(--text-muted);text-align:center;padding:8px;font-size:0.75rem;">暂无实体，请先添加控制器或按键</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 外部组件 -->
+                <div class="sub-panel" id="subExt">
+                    <div class="sub-panel-header" onclick="toggleSubPanel('subExt')">
+                        <span class="sub-panel-arrow">▶</span> 📦 外部组件
+                    </div>
+                    <div class="sub-panel-content">
+                        <div class="form-row"><select class="form-select" id="ext_source_type" onchange="onExtTypeChange()"><option value="git">git</option><option value="local">local</option></select></div>
+                        <div id="gitSettings">
+                            <div class="form-row"><div class="form-label"><strong>Git 仓库</strong></div><input class="form-input mono" id="ext_repo_url" value="https://github.com/txhtxh11/homekit"></div>
+                            <div class="form-row"><div class="form-label"><strong>子路径</strong></div><select class="form-select" id="ext_path"><option value="homekit-esp32">homekit-esp32 (ESP32)</option><option value="homekit-esp8266">homekit-esp8266 (ESP8266)</option><option value="">留空 (不显示子路径代码)</option></select><div class="form-hint">自动按设备&amp;芯片切换子路径</div></div>
+                            <div class="form-row"><div class="form-label"><strong>刷新间隔</strong></div><div class="time-input-row"><input class="form-input mono" id="ext_refresh" value="7d" style="flex:1;"><button type="button" class="never-btn" onclick="setNeverValue('ext_refresh','never')">never</button></div></div>
+                        </div>
+                        <div id="localSettings" style="display:none;"><div class="form-row"><div class="form-label"><strong>本地目录</strong></div><input class="form-input mono" id="ext_local_path" value="/config/my_components"></div></div>
+                        <div class="form-row"><div class="form-label"><strong>组件列表</strong> (逗号分隔)</div><input class="form-input mono" id="ext_components" value="homekit"></div>
+                    </div>
+                </div>
+
+                <!-- 辅助功能 -->
+                <div class="sub-panel" id="subAux">
+                    <div class="sub-panel-header" onclick="toggleSubPanel('subAux')">
+                        <span class="sub-panel-arrow">▶</span> 🛠 辅助功能
+                    </div>
+                    <div class="sub-panel-content">
+                        <div class="form-row"><select class="form-select" id="aux_reset_btn"><option value="1">重置 HomeKit 按钮: 添加</option><option value="0">不添加</option></select></div>
+                        <div class="form-row"><select class="form-select" id="aux_code_sensor"><option value="1">配对码传感器: 显示</option><option value="0">隐藏</option></select></div>
+                        <div class="form-row"><div class="form-label"><strong>传感器更新间隔</strong></div><div class="time-input-row"><input class="form-input mono" id="sensor_update_interval" value="12h" style="flex:1;"><button type="button" class="never-btn" onclick="setNeverValue('sensor_update_interval','never')">never</button></div></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ===== 实时代码 ===== -->
+        <div class="adv-section" id="yamlSection">
+            <div class="adv-toggle-bar" onclick="toggleYamlPreview()" style="cursor:pointer;">
+                <span class="adv-toggle-arrow" id="yamlArrow">▶</span>
+                ⚡ 实时代码
+            </div>
+            <div class="adv-content" id="yamlCodeBlock" style="padding:0;">
+                <div class="yaml-code-block" style="border:none; border-radius:0;">
+                    <pre id="yaml_preview"># 正在生成配置...</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 使用说明（折叠） ===== -->
+        <div class="adv-section" id="helpSection">
+            <div class="adv-toggle-bar" onclick="toggleHelp()">
+                <span class="adv-toggle-arrow">▶</span>
+                📖 使用说明
+            </div>
+            <div class="adv-content" id="helpContent" style="display:none;">
+                <div class="help-inner">
+                    <p class="help-intro">帮你把家里的 <strong>ESP8266/ESP32 开发板</strong> 变成同时支持 <strong>iPhone 家庭 App（HomeKit）</strong> 和 <strong>Home Assistant（ESPHome）</strong> 的智能开关、灯或插座。填好信息 → 拿到代码 → 烧进板子 → 完事。</p>
+
+                    <div class="help-grid">
+                        <div class="help-card">
+                            <div class="help-card-head">📦 你需要准备</div>
+                            <div class="help-card-body">
+                                <p>一块 <strong>ESP8266 或 ESP32 开发板</strong>（NodeMCU、D1 Mini 都行）</p>
+                                <p>你要控制的东西：继电器模块、灯带、插座等</p>
+                                <p>懂点电路接线（正负极别接反就行）</p>
+                            </div>
+                        </div>
+                        <div class="help-card">
+                            <div class="help-card-head">🔌 两步上手</div>
+                            <div class="help-card-body">
+                                <p><span class="help-step">1</span> 选好 GPIO 引脚，填 WiFi 名和密码</p>
+                                <p><span class="help-step">2</span> 复制或下载生成的 YAML 代码，或直接编译、烧录</p>
+                                <p style="margin-top:8px; color:var(--text-muted); font-size:0.72rem;">想加更多设备、接物理按键、调高级参数？点下方"高级设置"</p>
+                            </div>
+                        </div>
+                        <div class="help-card">
+                            <div class="help-card-head">🍎 连上 iPhone 家庭</div>
+                            <div class="help-card-body">
+                                <p>烧录后确保板和手机连的<strong>同一个 WiFi</strong></p>
+                                <p>打开 iPhone 家庭 App → 添加配件 → 扫描或输入配对码</p>
+                                <p>默认配对码：<code>111-22-333</code>（可在高级设置里改）</p>
+                            </div>
+                        </div>
+                        <div class="help-card">
+                            <div class="help-card-head">🛟 遇到问题</div>
+                            <div class="help-card-body">
+                                <p><strong>编译报错？</strong>检查板子型号和 Flash 大小选对没</p>
+                                <p><strong>搜不到设备？</strong>确认 2.4G WiFi（不支持 5G），和手机同一网络</p>
+                                <p><strong>按键不灵？</strong>检查 GPIO 号对不对，线接好没</p>
+                                <p><strong>连不上 WiFi？</strong>板子会自动开热点，手机连上去配置</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="help-tips">
+                        <div class="help-tip">💡 <strong>怎么烧录？</strong>拿到 YAML 代码后，可以用页面底部的编译/烧录链接在线搞定，也可以在电脑上装 ESPHome 自己编译。</div>
+                        <div class="help-tip">💡 <strong>什么是 GPIO？</strong>就是板子上的针脚编号。继电器接哪个针脚，这里就选那个号。</div>
+                        <div class="help-tip">💡 <strong>物理按键干嘛的？</strong>给板子外接一个实体按钮，按一下就能开关灯，不用每次都掏手机。</div>
+                    </div>
+
+                    <p style="margin-top:18px; font-size:0.78rem; color:var(--text-muted);">📋 CMPOWER 复制 / 💾 CMPOWER 下载 是给中移铁通智能排插 CMPOWER W1 用的完整代码，需要的可直接复制编译烧录。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== FOOTER ===== -->
+        <div class="footer-bar">
+            <span id="footerTitle" style="cursor:pointer; user-select:none;" title="点此查看访问量">TXH · Esp+Homekit 生成器</span>
+            <span id="visitDisplay" style="display:none; font-size:0.7rem; opacity:0; margin-left:6px; transition:opacity 0.3s; color:var(--text-muted);"></span>
+            <span id="busuanzi_container_site_pv" style="display:none;"><span id="busuanzi_value_site_pv"></span></span>
+            <div class="cm-btns">
+                <button class="cm-btn" id="cmCopyBtn">📋 CMPOWER 复制</button>
+                <button class="cm-btn" id="cmDownloadBtn">💾 CMPOWER 下载</button>
+                <a href="https://esphome-compiler.pages.dev" target="_blank" class="cm-btn">手动编译</a>
+            </div>
+        </div>
+    </div>
+
+<script>
+// =====================================================================
+// TOAST NOTIFICATION SYSTEM
+// =====================================================================
+function showToast(msg) {
+    const container = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    container.appendChild(el);
+    setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 2600);
+}
+
+// =====================================================================
+// ADVANCED SECTION TOGGLE
+// =====================================================================
+function toggleYamlPreview() {
+    const section = document.getElementById('yamlSection');
+    const arrow = document.getElementById('yamlArrow');
+    const isOpen = section.classList.toggle('open');
+    arrow.textContent = isOpen ? '▼' : '▶';
+    if (isOpen) {
+        renderYAML();
+    }
+}
+
+function toggleAdvSection() {
+    document.getElementById('advSection').classList.toggle('open');
+}
+
+// =====================================================================
+// THEME
+// =====================================================================
+function setTheme(theme) {
+    document.body.setAttribute('data-theme', theme === 'auto' ? 'auto' : theme);
+    localStorage.setItem('esphome_theme', theme);
+    document.getElementById('themeSelect').value = theme;
+}
+function loadTheme() {
+    const saved = localStorage.getItem('esphome_theme') || 'light';
+    document.getElementById('themeSelect').value = saved;
+    setTheme(saved);
+}
+
+// =====================================================================
+// COMPILE/FLASH LINKS
+// =====================================================================
+let compileUrl = localStorage.getItem('esphome_compile_url') || 'https://esphome-compiler.pages.dev/';
+let flashUrl = localStorage.getItem('esphome_flash_url') || 'https://web.esphome.io/';
+
+function openFlash() { window.open(flashUrl, '_blank'); }
+document.getElementById('flashBtn').addEventListener('click', startFlash);
+document.getElementById('thirdPartyBtn').addEventListener('click', openFlash);
+document.getElementById('flashCardClose').addEventListener('click', closeFlashCard);
+
+// =====================================================================
+// 烧录：在本页卡片内嵌入本站烧录服务（esphome-compiler 的 Flash 模块）
+// =====================================================================
+var lastArtifact = null;
+
+function currentChipFamily() {
+    var p = document.getElementById('platform');
+    return p && p.value === 'esp32' ? 'esp32' : 'esp8266';
+}
+
+function openFlashCard(artifactUrl, chip) {
+    var q = '?widget=1&chip=' + chip + '&artifact=' + encodeURIComponent(artifactUrl);
+    var url = COMPILER + '/' + q;
+    var card = document.getElementById('flashCard');
+    document.getElementById('flashFrame').src = url;
+    document.getElementById('flashCardExternal').href = url;
+    card.style.display = 'block';
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function closeFlashCard() {
+    document.getElementById('flashCard').style.display = 'none';
+    document.getElementById('flashFrame').src = 'about:blank';
+}
+
+async function startFlash() {
+    var y = document.getElementById('yaml_preview').textContent;
+    if (!y || y === '# 正在生成配置...') { showToast('请先生成 YAML 配置'); return; }
+    var chip = currentChipFamily();
+    if (lastArtifact && lastArtifact.yaml === y && lastArtifact.chip === chip) {
+        openFlashCard(lastArtifact.url, chip);
+        return;
+    }
+    await smartCompile();
+    if (lastArtifact && lastArtifact.yaml === y) {
+        openFlashCard(lastArtifact.url, lastArtifact.chip);
+    }
+}
+
+const COMPILER = 'https://esphome-compiler.pages.dev';
+let compileAbort = null;
+function rndPw() { var c='ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789',p=''; for(var i=0;i<16;i++)p+=c[Math.floor(Math.random()*c.length)]; return p; }
+function closeCompile() {
+    var box=document.getElementById('compileStatus');
+    var btn=document.getElementById('compileBtn');
+    box.style.display='none';
+    btn.disabled=false;btn.textContent='编译';
+    compileAbort=null;
+}
+async function smartCompile() {
+    var btn=document.getElementById('compileBtn');
+    var y=document.getElementById('yaml_preview').textContent;
+    var box=document.getElementById('compileStatus');
+    var msg=document.getElementById('compileMsg');
+    var cb=document.getElementById('cancelCompileBtn');
+    if(!y||y==='# 正在生成配置...'){showToast('请先生成 YAML 配置');return}
+    btn.disabled=true;btn.textContent='编译中...';
+    box.style.display='flex';msg.textContent='提交编译...';
+    compileAbort=new AbortController();
+    cb.textContent='取消';
+    cb.onclick=function(){if(compileAbort)compileAbort.abort();closeCompile()};
+    try{
+        var pw=rndPw(),dn=document.getElementById('device_name'),bd=document.getElementById('board'),vr=document.getElementById('esphome_version');
+        dn=dn?dn.value||'esp':'esp';bd=bd?bd.value||'esp32dev':'esp32dev';vr=vr?vr.value||'':'';
+        var enc=btoa(unescape(encodeURIComponent(y)));
+        var body=JSON.stringify({encodedYaml:enc,deviceName:dn,board:bd,esphomeVersion:vr,artifactPassword:pw});
+        var r=await fetch(COMPILER+'/api/compile',{method:'POST',headers:{'Content-Type':'application/json'},body:body,signal:compileAbort.signal});
+        var d=await r.json();
+        if(compileAbort.signal.aborted)return;
+        if(!r.ok||!d.requestId)throw new Error(d.message||'请求失败');
+        var s=null,i=0,t0=Date.now();
+        while(Date.now()-t0<10*60*1000){
+            if(compileAbort.signal.aborted)return;
+            await new Promise(function(x){setTimeout(x,Math.min(5000+i*1000,15000))});i++;
+            if(compileAbort.signal.aborted)return;
+            var sr=await fetch(COMPILER+'/api/status/'+d.requestId,{signal:compileAbort.signal});
+            s=await sr.json();
+            if(!sr.ok)throw new Error(s.message||'查询失败');
+            if(s.status==='completed'&&s.conclusion==='success')break;
+            if(s.conclusion==='failure'||s.conclusion==='cancelled'||(s.status==='completed'&&s.conclusion!=='success'))throw new Error('编译失败:'+s.conclusion);
+            msg.textContent='编译中... ('+(s.status||'running')+')';
+        }
+        if(compileAbort.signal.aborted)return;
+        if(!s||!(s.status==='completed'&&s.conclusion==='success'))throw new Error('超时');
+        cb.textContent='关闭';
+        if(s.artifactUrl){
+            var dlUrl=COMPILER+s.artifactUrl;
+            lastArtifact={url:dlUrl, chip:currentChipFamily(), yaml:y};
+            msg.innerHTML='编译完成！<a href="'+dlUrl+'" target="_blank" style="color:#006fee;">下载固件包</a>';
+        }else{
+            msg.innerHTML='编译完成！<a href="'+compileUrl+'" target="_blank" style="color:#006fee;">打开编译器下载</a>';
+        }
+    }catch(e){
+        if(e.name==='AbortError')return;
+        cb.textContent='关闭';
+        msg.innerHTML='失败: '+e.message+'<br><a href="'+compileUrl+'" target="_blank" style="color:#006fee;">手动编译</a>';
+    }finally{
+        btn.disabled=false;btn.textContent='编译';compileAbort=null;
+    }
+}
+document.getElementById('compileBtn').addEventListener('click',smartCompile);
+
+
+// =====================================================================
+// TOGGLE FUNCTIONS
+// =====================================================================
+function togglePanel(id) {
+    const c = document.getElementById(id);
+    if (!c) return;
+    const vis = c.style.display === 'block';
+    c.style.display = vis ? 'none' : 'block';
+    const p = c.closest('.panel');
+    if (p) vis ? p.classList.remove('active') : p.classList.add('active');
+}
+
+function toggleSubPanel(subId) {
+    const sub = document.getElementById(subId);
+    if (!sub) return;
+    sub.classList.toggle('open');
+    const content = sub.querySelector('.sub-panel-content');
+    if (content) {
+        content.style.display = content.style.display === 'block' ? 'none' : 'block';
+    }
+}
+
+function toggleAdvSettings() {
+    const div = document.getElementById('ctrlAdvancedSettings');
+    const toggle = document.getElementById('ctrlAdvToggle');
+    if (!div || !toggle) return;
+    if (div.style.display === 'block') {
+        div.style.display = 'none';
+        toggle.innerHTML = '⚙️ 高级选项 ▾';
+    } else {
+        div.style.display = 'block';
+        toggle.innerHTML = '⚙️ 高级选项 ▴';
+    }
+}
+
+function toggleHelp() {
+    const section = document.getElementById('helpSection');
+    if (!section) return;
+    const content = document.getElementById('helpContent');
+    const arrow = section.querySelector('.adv-toggle-arrow');
+    if (!content || !arrow) return;
+    const vis = content.style.display !== 'none';
+    content.style.display = vis ? 'none' : 'block';
+    section.classList.toggle('open', !vis);
+    arrow.textContent = vis ? '▶' : '▼';
+}
+
+function onCtrlTypeChange() {
+    // handled in renderControllersUI / addController
+}
+
+function onHkEnableChange() {
+    const enable = document.getElementById('hk_enable').value === '1';
+    document.getElementById('homekitDetails').style.display = enable ? 'block' : 'none';
+    document.getElementById('subExt').style.display = enable ? '' : 'none';
+    document.getElementById('subAux').style.display = enable ? '' : 'none';
+    renderYAML();
+}
+
+function onExtTypeChange() {
+    const type = document.getElementById('ext_source_type').value;
+    document.getElementById('gitSettings').style.display = type === 'git' ? 'block' : 'none';
+    document.getElementById('localSettings').style.display = type === 'local' ? 'block' : 'none';
+    renderYAML();
+}
+
+function onWebChange() {
+    const enabled = document.getElementById('web').value === '1';
+    document.getElementById('webSettingsRow').style.display = enabled ? 'block' : 'none';
+    renderYAML();
+}
+
+function onPlatformChange() {
+    const platform = document.getElementById('platform').value;
+    const sel = document.getElementById('board_select');
+    Array.from(sel.options).forEach(opt => {
+        if (opt.dataset.platform === '' || opt.dataset.platform === platform) {
+            opt.style.display = '';
+        } else {
+            opt.style.display = 'none';
+        }
+    });
+    if (sel.selectedOptions.length && sel.selectedOptions[0].style.display === 'none') {
+        const firstVisible = Array.from(sel.options).find(o => o.style.display !== 'none' && o.value !== 'custom');
+        if (firstVisible) sel.value = firstVisible.value;
+    }
+    const flash = document.getElementById('flash_size');
+    if (platform === 'esp32') {
+        flash.value = '4MB';
+    }
+    // 自动切换子路径
+    const extPath = document.getElementById('ext_path');
+    if (extPath) {
+        const val = platform === 'esp32' ? 'homekit-esp32' : 'homekit-esp8266';
+        if (Array.from(extPath.options).some(o => o.value === val)) {
+            extPath.value = val;
+        }
+    }
+    onBoardChange();
+}
+
+function onBoardChange() {
+    const sel = document.getElementById('board_select').value;
+    document.getElementById('board_custom').style.display = sel === 'custom' ? 'block' : 'none';
+    renderYAML();
+}
+
+function onFlashChange() {
+    const flash = document.getElementById('flash_size').value;
+    const sel = document.getElementById('board_select');
+    if (sel.value === 'custom') { renderYAML(); return; }
+    if (flash === '1MB' && sel.value !== 'esp01_1m') {
+        sel.value = 'esp01_1m'; onBoardChange();
+    } else if ((flash === '4MB' || flash === '8MB') && sel.value === 'esp01_1m') {
+        sel.value = 'nodemcuv2'; onBoardChange();
+    }
+    renderYAML();
+}
+
+function setNeverValue(id, val) { document.getElementById(id).value = val; renderYAML(); }
+
+// =====================================================================
+// DATA MODEL
+// =====================================================================
+let controllers = [];    // {id, name, type, gpio, invert, init_level, wifiIndicator, followId, _quick:bool}
+let buttons = [];        // {id, name, gpio, pullup, invert, min_ms, max_ms, target_id, action, homekit_enabled}
+let cmpowerActive = false;
+let _quickCtrlId = null;  // track the quick-start controller
+
+function genId(p) { return `${p}_${Date.now()}_${Math.floor(Math.random() * 10000)}`; }
+
+// =====================================================================
+// QUICK GPIO SYNC — keep one controller synced with quick_gpio
+// =====================================================================
+function syncQuickController() {
+    if (cmpowerActive) return;  // CMPOWER mode: don't sync
+    const gpioVal = document.getElementById('quick_gpio')?.value.trim() || '2';
+    const gpio = gpioVal.replace(/^GPIO/i, '').trim() || '2';
+    const qCtrl = controllers.find(c => c._quick);
+    if (qCtrl) {
+        // Update existing quick controller
+        qCtrl.gpio = gpio;
+        qCtrl.name = `GPIO${gpio}开关`;
+        // Auto-check in HomeKit
+        if (!window._hkCheckedIds) window._hkCheckedIds = new Set();
+        window._hkCheckedIds.add(qCtrl.id);
+    } else {
+        // Create new quick controller
+        const newCtrl = {
+            id: genId('dev'),
+            name: `GPIO${gpio}开关`,
+            type: 'switch',
+            gpio: gpio,
+            invert: 'false',
+            init_level: 'ALWAYS_OFF',
+            wifiIndicator: false,
+            followId: null,
+            _quick: true
+        };
+        controllers.unshift(newCtrl);  // prepend so it shows first
+        _quickCtrlId = newCtrl.id;
+        if (!window._hkCheckedIds) window._hkCheckedIds = new Set();
+        window._hkCheckedIds.add(newCtrl.id);
+    }
+    // Update the quick label
+    const labelEl = document.getElementById('quickLabel');
+    if (labelEl) {
+        const ctrlName = controllers.find(c => c._quick);
+        labelEl.innerHTML = `GPIO${gpio} ${ctrlName?.type === 'light' ? '灯' : (ctrlName?.type === 'socket' ? '插座' : '开关')} <span class="accent-dot">·</span> HomeKit 已就绪`;
+    }
+    renderControllersUI();
+    renderButtonsUI();
+}
+
+// =====================================================================
+// RANDOM PAIRING CODE
+// =====================================================================
+function generateRandomCode() {
+    const a = String(Math.floor(Math.random() * 900) + 100);
+    const b = String(Math.floor(Math.random() * 90) + 10);
+    const c = String(Math.floor(Math.random() * 900) + 100);
+    const code = `${a}-${b}-${c}`;
+    document.getElementById('hk_code').value = code;
+    renderYAML();
+    showToast(`🎲 随机配对码: ${code}`);
+}
+
+// =====================================================================
+// PRESET FUNCTIONS — update quick_gpio and sync
+// =====================================================================
+function presetLight() {
+    controllers = []; buttons = []; cmpowerActive = false; _quickCtrlId = null;
+    document.getElementById('quick_gpio').value = '2';
+    const ctrl = {
+        id: genId('dev'), name: 'GPIO2灯', type: 'light', gpio: '2',
+        invert: 'false', init_level: 'ALWAYS_OFF', wifiIndicator: true,
+        followId: null, _quick: true
+    };
+    controllers.push(ctrl); _quickCtrlId = ctrl.id;
+    if (!window._hkCheckedIds) window._hkCheckedIds = new Set();
+    window._hkCheckedIds.clear(); window._hkCheckedIds.add(ctrl.id);
+    const labelEl = document.getElementById('quickLabel');
+    if (labelEl) labelEl.innerHTML = 'GPIO2 灯 <span class="accent-dot">·</span> HomeKit 已就绪';
+    renderControllersUI(); renderButtonsUI();
+    showToast('💡 已配置: 灯 (GPIO2, WiFi指示灯)');
+}
+
+function presetSwitch() {
+    controllers = []; buttons = []; cmpowerActive = false; _quickCtrlId = null;
+    document.getElementById('quick_gpio').value = '2';
+    syncQuickController();
+    showToast('🔌 已配置: 开关 (GPIO2)');
+}
+
+function presetSocket() {
+    controllers = []; buttons = []; cmpowerActive = false; _quickCtrlId = null;
+    document.getElementById('quick_gpio').value = '2';
+    const ctrl = {
+        id: genId('dev'), name: 'GPIO2插座', type: 'socket', gpio: '2',
+        invert: 'false', init_level: 'ALWAYS_OFF', wifiIndicator: false,
+        followId: null, _quick: true
+    };
+    controllers.push(ctrl); _quickCtrlId = ctrl.id;
+    if (!window._hkCheckedIds) window._hkCheckedIds = new Set();
+    window._hkCheckedIds.clear(); window._hkCheckedIds.add(ctrl.id);
+    const labelEl = document.getElementById('quickLabel');
+    if (labelEl) labelEl.innerHTML = 'GPIO2 插座 <span class="accent-dot">·</span> HomeKit 已就绪';
+    renderControllersUI(); renderButtonsUI();
+    showToast('🔌 已配置: 插座 (GPIO2)');
+}
+
+function presetCmpower() {
+    controllers = []; buttons = []; cmpowerActive = true; _quickCtrlId = null;
+    if (!window._hkCheckedIds) window._hkCheckedIds = new Set();
+    window._hkCheckedIds.clear();
+    const labelEl = document.getElementById('quickLabel');
+    if (labelEl) labelEl.innerHTML = 'CMPOWER W1 <span class="accent-dot">·</span> 预置配置已就绪';
+    renderControllersUI(); renderButtonsUI(); renderYAML();
+    showToast('🏠 已加载: 智能插排 CMPOWER W1 (查看YAML)');
+}
+
+function presetClear() {
+    controllers = []; buttons = []; cmpowerActive = false; _quickCtrlId = null;
+    if (!window._hkCheckedIds) window._hkCheckedIds = new Set();
+    window._hkCheckedIds.clear();
+    const labelEl = document.getElementById('quickLabel');
+    if (labelEl) labelEl.innerHTML = '输入 GPIO 引脚号开始 <span class="accent-dot">·</span> 已清空';
+    renderControllersUI(); renderButtonsUI();
+    showToast('🧹 已清空 · 输入GPIO引脚号或选预设');
+}
+
+// =====================================================================
+// RENDER UI
+// =====================================================================
+function renderControllersUI() {
+    const ctn = document.getElementById('ctrl_list_container');
+    if (!ctn) return;
+    if (controllers.length === 0) {
+        ctn.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:8px;font-size:0.8rem;">暂无控制器</div>';
+    } else {
+        ctn.innerHTML = controllers.map((c, i) => {
+            const typeLabel = c.type === 'light' ? '灯' : (c.type === 'socket' ? '插座' : '开关');
+            const extras = [];
+            if (c.wifiIndicator) extras.push('🔵WiFi指示');
+            if (c.followId) extras.push('🔗联动');
+            if (c._quick) extras.push('');
+            const extraStr = extras.length ? ' ' + extras.join(' ') : '';
+            return `<div class="item-row"><span>${c.name} (${typeLabel} | GPIO${c.gpio}${extraStr})</span><div class="item-row-buttons"><button class="item-edit" onclick="editController(${i})">✎ 编辑</button><button class="item-del" onclick="removeController(${i})">✕ 删除</button></div></div>`;
+        }).join('');
+    }
+
+    // Update follow dropdown
+    const followSel = document.getElementById('ctrl_follow_target');
+    if (followSel) {
+        let opts = '<option value="">无联动</option>';
+        controllers.forEach(c => {
+            const tl = c.type === 'light' ? '灯' : (c.type === 'socket' ? '插座' : '开关');
+            opts += `<option value="${c.id}">${c.name} (${tl})</option>`;
+        });
+        followSel.innerHTML = opts;
+    }
+
+    // Update button target dropdown
+    const btnTarget = document.getElementById('btn_target_select');
+    if (btnTarget) {
+        let opts = '<option value="__disabled__">不启用</option>';
+        controllers.forEach(c => {
+            const tl = c.type === 'light' ? '灯' : (c.type === 'socket' ? '插座' : '开关');
+            opts += `<option value="${c.id}">${c.name} (${tl})</option>`;
+        });
+        btnTarget.innerHTML = opts;
+    }
+
+    renderHomeKitEntityList();
+    renderYAML();
+}
+
+function renderButtonsUI() {
+    const ctn = document.getElementById('btn_list_container');
+    if (!ctn) return;
+    if (buttons.length === 0) {
+        ctn.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:8px;font-size:0.8rem;">暂无按键</div>';
+    } else {
+        ctn.innerHTML = buttons.map((b, i) => {
+            let targetName = '无动作';
+            if (b.target_id !== '__disabled__') {
+                const tc = controllers.find(c => c.id === b.target_id);
+                targetName = tc ? tc.name : '已删除';
+            }
+            const hkBadge = b.homekit_enabled ? '<span class="entity-badge">HomeKit</span>' : '<span class="entity-badge off">仅本地</span>';
+            return `<div class="item-row"><span>${b.name} (GPIO${b.gpio}) → ${targetName} (${b.action}) ${hkBadge}</span><button class="item-del" onclick="removeButton(${i})">✕ 删除</button></div>`;
+        }).join('');
+    }
+    renderHomeKitEntityList();
+    renderYAML();
+}
+
+function renderHomeKitEntityList() {
+    const container = document.getElementById('hkEntityListContainer');
+    if (!container) return;
+    const allEntities = [];
+    controllers.forEach(ctrl => {
+        const typeLabel = ctrl.type === 'light' ? '灯' : (ctrl.type === 'socket' ? '插座' : '开关');
+        allEntities.push({ id: ctrl.id, name: ctrl.name, type: ctrl.type, typeLabel });
+    });
+    buttons.forEach(btn => {
+        allEntities.push({ id: btn.id, name: btn.name, type: 'binary_sensor', typeLabel: '按键' });
+    });
+    if (allEntities.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:8px;font-size:0.75rem;">暂无实体，请先添加控制器或按键</div>';
+        return;
+    }
+    if (!window._hkCheckedIds) window._hkCheckedIds = new Set();
+    let html = '';
+    allEntities.forEach(ent => {
+        const checked = window._hkCheckedIds.has(ent.id) ? 'checked' : '';
+        html += `<div class="hk-entity-item">
+            <input type="checkbox" class="hk-entity-checkbox" data-id="${ent.id}" data-type="${ent.type}" ${checked}>
+            <label title="${ent.name}">${ent.name}</label>
+            <span class="hk-entity-type">${ent.typeLabel}</span>
+        </div>`;
+    });
+    container.innerHTML = html;
+    document.querySelectorAll('.hk-entity-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const id = cb.getAttribute('data-id');
+            if (cb.checked) window._hkCheckedIds.add(id);
+            else window._hkCheckedIds.delete(id);
+            renderYAML();
+        });
+    });
+}
+
+// =====================================================================
+// ADD / REMOVE
+// =====================================================================
+function addController() {
+    if (_editingCtrlIndex >= 0) {
+        // Inline edit mode: update existing controller
+        const ctrl = controllers[_editingCtrlIndex];
+        if (!ctrl) return;
+        ctrl.name = (document.getElementById('new_ctrl_name').value.trim() || ctrl.name);
+        ctrl.type = document.getElementById('new_ctrl_type').value;
+        ctrl.gpio = document.getElementById('new_ctrl_gpio').value.trim() || ctrl.gpio;
+        ctrl.invert = document.getElementById('new_ctrl_invert').value;
+        ctrl.init_level = document.getElementById('new_ctrl_init_level').value;
+        if (ctrl.type === 'switch' || ctrl.type === 'light') {
+            ctrl.wifiIndicator = document.getElementById('ctrl_wifi_indicator').checked;
+            const fid = document.getElementById('ctrl_follow_target').value;
+            ctrl.followId = fid === '' ? null : fid;
+        } else {
+            ctrl.wifiIndicator = false;
+            ctrl.followId = null;
+        }
+        renderControllersUI();
+        renderButtonsUI();
+        showToast(`✎ 已更新: ${ctrl.name}`);
+        cancelEditController();
+        return;
+    }
+
+    let name = document.getElementById('new_ctrl_name').value.trim();
+    const gpio = document.getElementById('new_ctrl_gpio').value.trim() || '4';
+    if (!name) {
+        const type = document.getElementById('new_ctrl_type').value;
+        const typeLabel = type === 'light' ? '灯' : (type === 'socket' ? '插座' : '开关');
+        name = `GPIO${gpio}${typeLabel}`;
+    }
+    const type = document.getElementById('new_ctrl_type').value;
+    const invert = document.getElementById('new_ctrl_invert').value;
+    const init_level = document.getElementById('new_ctrl_init_level').value;
+    let wifiIndicator = false;
+    let followId = null;
+    if (type === 'switch' || type === 'light') {
+        wifiIndicator = document.getElementById('ctrl_wifi_indicator').checked;
+        followId = document.getElementById('ctrl_follow_target').value;
+        if (followId === '') followId = null;
+    }
+    const newCtrl = {
+        id: genId('dev'),
+        name, type, gpio, invert, init_level, wifiIndicator, followId,
+        _quick: false
+    };
+    controllers.push(newCtrl);
+
+    // Auto-check in HomeKit
+    if (!window._hkCheckedIds) window._hkCheckedIds = new Set();
+    window._hkCheckedIds.add(newCtrl.id);
+
+    renderControllersUI();
+    document.getElementById('new_ctrl_name').value = '';
+    document.getElementById('ctrl_wifi_indicator').checked = false;
+    document.getElementById('ctrl_follow_target').value = '';
+    showToast(`✅ 已添加: ${name}`);
+}
+
+function removeController(i) {
+    const name = controllers[i]?.name || '';
+    controllers.splice(i, 1);
+    buttons = buttons.filter(b => b.target_id === '__disabled__' || controllers.some(c => c.id === b.target_id));
+    renderControllersUI();
+    renderButtonsUI();
+    showToast(`🗑 已删除: ${name}`);
+}
+
+let _editingCtrlIndex = -1;  // -1 means adding new, >=0 means editing
+
+function editController(i) {
+    const ctrl = controllers[i];
+    if (!ctrl) return;
+    _editingCtrlIndex = i;
+    // Load controller data into the form
+    document.getElementById('new_ctrl_name').value = ctrl.name;
+    document.getElementById('new_ctrl_type').value = ctrl.type;
+    document.getElementById('new_ctrl_gpio').value = ctrl.gpio;
+    document.getElementById('new_ctrl_invert').value = ctrl.invert;
+    document.getElementById('new_ctrl_init_level').value = ctrl.init_level;
+
+    // Show WiFi indicator only for switch/light
+    if (ctrl.type === 'switch' || ctrl.type === 'light') {
+        document.getElementById('ctrl_wifi_indicator').checked = !!ctrl.wifiIndicator;
+        document.getElementById('ctrl_wifi_indicator').parentElement.style.display = '';
+        document.getElementById('ctrl_follow_target').parentElement.style.display = '';
+    } else {
+        document.getElementById('ctrl_wifi_indicator').parentElement.style.display = 'none';
+        document.getElementById('ctrl_follow_target').parentElement.style.display = 'none';
+    }
+    // Set follow target after rendering dropdown (done in renderControllersUI)
+    setTimeout(() => {
+        if (ctrl.followId) {
+            const ft = document.getElementById('ctrl_follow_target');
+            if (ft) ft.value = ctrl.followId;
+        } else {
+            const ft = document.getElementById('ctrl_follow_target');
+            if (ft) ft.value = '';
+        }
+    }, 0);
+
+    // Change button to indicate edit mode
+    const submitBtn = document.getElementById('ctrlSubmitBtn');
+    const cancelBtn = document.getElementById('ctrlCancelBtn');
+    if (submitBtn) {
+        submitBtn.textContent = '💾 保存修改';
+    }
+    if (cancelBtn) cancelBtn.style.display = '';
+    const titleEl = document.querySelector('#ctrlMgmt .form-card-title');
+    if (titleEl) titleEl.innerHTML = `✎ 编辑控制器: ${ctrl.name}`;
+
+    // Scroll to the form
+    document.getElementById('ctrlMgmt').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEditController() {
+    _editingCtrlIndex = -1;
+    // Clear form
+    document.getElementById('new_ctrl_name').value = '';
+    document.getElementById('new_ctrl_gpio').value = '4';
+    document.getElementById('ctrl_wifi_indicator').checked = false;
+    document.getElementById('ctrl_wifi_indicator').parentElement.style.display = '';
+    document.getElementById('ctrl_follow_target').parentElement.style.display = '';
+    document.getElementById('ctrl_follow_target').value = '';
+    // Reset buttons
+    const submitBtn = document.getElementById('ctrlSubmitBtn');
+    const cancelBtn = document.getElementById('ctrlCancelBtn');
+    if (submitBtn) {
+        submitBtn.textContent = '添加';
+    }
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    const titleEl = document.querySelector('#ctrlMgmt .form-card-title');
+    if (titleEl) titleEl.innerHTML = '➕ 添加控制器';
+}
+
+function addButtonMapping() {
+    const targetId = document.getElementById('btn_target_select').value;
+    const name = document.getElementById('new_btn_name').value.trim() || `btn_${document.getElementById('new_btn_gpio').value}`;
+    const newBtn = {
+        id: genId('btn'),
+        name,
+        gpio: document.getElementById('new_btn_gpio').value.trim() || '0',
+        pullup: 'true',
+        invert: 'true',
+        min_ms: '50',
+        max_ms: '800',
+        target_id: targetId,
+        action: document.getElementById('new_btn_action').value,
+        homekit_enabled: true
+    };
+    buttons.push(newBtn);
+    if (!window._hkCheckedIds) window._hkCheckedIds = new Set();
+    window._hkCheckedIds.add(newBtn.id);
+    renderButtonsUI();
+    document.getElementById('new_btn_name').value = '';
+    document.getElementById('new_btn_gpio').value = '0';
+    showToast(`🔘 已添加按键: ${name}`);
+}
+
+function removeButton(i) {
+    const name = buttons[i]?.name || '';
+    buttons.splice(i, 1);
+    renderButtonsUI();
+    showToast(`🗑 已删除按键: ${name}`);
+}
+
+// =====================================================================
+// YAML GENERATION (FULL - preserves ALL original logic)
+// =====================================================================
+function renderYAML() {
+    // --- CMPOWER preset mode ---
+    if (cmpowerActive) {
+        const y = getCmpowerYamlContent();
+        document.getElementById('yaml_preview').textContent = y;
+        return y;
+    }
+
+    const deviceName = (document.getElementById('device_name')?.value || 'esp_homekit_device').toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    let board = '';
+    const boardSel = document.getElementById('board_select').value;
+    if (boardSel === 'custom') {
+        board = document.getElementById('board_custom').value.trim();
+        if (!board) board = 'esp12e';
+    } else {
+        board = boardSel;
+    }
+
+    const nameMac = document.getElementById('name_strategy')?.value === 'true';
+    const platform = document.getElementById('platform')?.value || 'esp8266';
+    const flashSize = document.getElementById('flash_size')?.value || '4MB';
+    const force11g = platform === 'esp8266' && document.getElementById('force_11g')?.value === 'true';
+    const restoreFlash = document.getElementById('restore_flash')?.value;
+    const ssid = document.getElementById('ssid')?.value.trim();
+    const pwd = document.getElementById('pwd')?.value || '';
+    const apSsid = document.getElementById('ap_ssid')?.value || 'ESPHome-Hotspot';
+    const apPwd = document.getElementById('ap_pwd')?.value || '';
+    const fastConn = document.getElementById('fast_connect')?.value;
+    const captive = document.getElementById('captive_portal_enable')?.value === 'true';
+    const wifiTimeout = document.getElementById('wifi_reboot_timeout')?.value.trim() || '0s';
+    const loggerVal = document.getElementById('logger')?.value;
+    const loggerEn = loggerVal === 'INFO' || loggerVal === 'DEBUG';
+    const apiEn = document.getElementById('api')?.value === '1';
+    const apiTimeout = document.getElementById('api_reboot_timeout')?.value.trim() || '0s';
+    const otaEn = document.getElementById('ota')?.value === '1';
+    const webEn = document.getElementById('web')?.value === '1';
+    const webPort = document.getElementById('web_port')?.value || '80';
+    const webVer = document.getElementById('web_version')?.value || '1';
+    const hkEnable = document.getElementById('hk_enable')?.value === '1';
+    const hkId = (document.getElementById('hk_id')?.value || 'my_hk').replace(/[^a-z0-9_]/gi, '_');
+    const hkCode = document.getElementById('hk_code')?.value || '111-22-333';
+    const auxReset = document.getElementById('aux_reset_btn')?.value === '1';
+    const auxSensor = document.getElementById('aux_code_sensor')?.value === '1';
+    let sensorInterval = document.getElementById('sensor_update_interval')?.value.trim() || '12h';
+    if (sensorInterval === 'never') sensorInterval = 'never';
+    const extType = document.getElementById('ext_source_type')?.value || 'git';
+    let extRefresh = document.getElementById('ext_refresh')?.value.trim() || '7d';
+    if (extRefresh === 'never') extRefresh = 'never';
+    const extComps = document.getElementById('ext_components')?.value.trim() || 'homekit';
+
+    let yaml = `# ESPHome + HomeKit 配置\n# 生成: ${new Date().toLocaleString()}\n\nesphome:\n  name: "${deviceName}"\n`;
+    if (nameMac) yaml += `  name_add_mac_suffix: true\n`;
+
+    if (platform === 'esp8266') {
+        let ldscript = '';
+        switch (flashSize) {
+            case '1MB': ldscript = 'eagle.flash.1m.ld'; break;
+            case '2MB': ldscript = 'eagle.flash.2m.ld'; break;
+            case '4MB': ldscript = 'eagle.flash.4m1m.ld'; break;
+            case '8MB': ldscript = 'eagle.flash.8m.ld'; break;
+            default: ldscript = 'eagle.flash.4m1m.ld';
+        }
+        yaml += `  platformio_options:\n    board_build.f_cpu: 160000000L\n    board_build.ldscript: ${ldscript}\n    build_flags:\n      - "-D HOMEKIT_LOG_LEVEL=0 -D ARDUINO_HOMEKIT_LOWROM"\n`;
+    }
+    if (force11g && platform === 'esp8266') {
+        yaml += `  on_boot:\n    priority: 800\n    then:\n      - lambda: |-\n          WiFi.setPhyMode(WIFI_PHY_MODE_11G);\n`;
+    }
+
+    yaml += `\n${platform}:\n  board: ${board}\n`;
+    if (restoreFlash !== 'none') yaml += `  restore_from_flash: ${restoreFlash === 'true'}\n`;
+
+    yaml += `\nwifi:\n`;
+    if (ssid) {
+        yaml += `  ssid: "${ssid}"\n  password: "${pwd}"\n`;
+    } else {
+        yaml += `  # 请在快速开始区域填写 WiFi SSID 和密码\n  # ssid: "你的WiFi名称"\n  # password: "你的WiFi密码"\n`;
+    }
+    yaml += `  min_auth_mode: WPA2\n`;
+    if (fastConn !== 'none') yaml += `  fast_connect: ${fastConn === 'true'}\n`;
+    yaml += `  reboot_timeout: ${wifiTimeout}\n  ap:\n    ssid: "${apSsid}"\n`;
+    yaml += apPwd ? `    password: "${apPwd}"\n` : `    password: ""\n`;
+    yaml += `\n`;
+
+    // WiFi indicator linkages
+    const wifiControllers = controllers.filter(c => c.wifiIndicator === true);
+    if (wifiControllers.length) {
+        wifiControllers.forEach(ctrl => {
+            const domain = (ctrl.type === 'light') ? 'light' : 'switch';
+            yaml += `  on_disconnect:\n    then:\n      - ${domain}.turn_on: ${ctrl.id}\n  on_connect:\n    then:\n      - ${domain}.turn_off: ${ctrl.id}\n`;
+        });
+    }
+    yaml += `\n`;
+
+    if (captive) yaml += `captive_portal:\n\n`;
+    if (loggerEn) yaml += `logger:\n  level: ${loggerVal}\n\n`;
+    if (apiEn) yaml += `api:\n  reboot_timeout: ${apiTimeout}\n\n`;
+    if (otaEn) yaml += `ota:\n  - platform: esphome\n\n`;
+    if (webEn) yaml += `web_server:\n  port: ${webPort}\n  version: ${webVer}\n\n`;
+
+    // Controllers
+    const lights = controllers.filter(c => c.type === 'light');
+    const switches = controllers.filter(c => c.type === 'switch' || c.type === 'socket');
+
+    if (lights.length) {
+        yaml += `output:\n`;
+        lights.forEach(light => {
+            const outId = `out_${light.id}`;
+            light._outputId = outId;
+            yaml += `  - platform: ${platform === 'esp32' ? 'ledc' : 'esp8266_pwm'}\n    id: ${outId}\n    pin: GPIO${light.gpio}\n`;
+            if (light.invert === 'true') yaml += `    inverted: true\n`;
+        });
+        yaml += `\nlight:\n`;
+        lights.forEach(light => {
+            yaml += `  - platform: monochromatic\n    name: "${light.name}"\n    id: ${light.id}\n    output: ${light._outputId}\n    restore_mode: RESTORE_DEFAULT_OFF\n`;
+            if (light.followId) {
+                const target = controllers.find(c => c.id === light.followId);
+                const targetDomain = (target && target.type === 'light') ? 'light' : 'switch';
+                yaml += `    on_turn_on:\n      - ${targetDomain}.turn_on: ${light.followId}\n    on_turn_off:\n      - ${targetDomain}.turn_off: ${light.followId}\n`;
+            }
+            yaml += `\n`;
+        });
+    }
+
+    if (switches.length) {
+        yaml += `switch:\n`;
+        switches.forEach(s => {
+            yaml += `  - platform: gpio\n    pin: GPIO${s.gpio}\n    id: ${s.id}\n    name: "${s.name}"\n`;
+            if (s.invert === 'true') yaml += `    inverted: true\n`;
+            yaml += `    restore_mode: ${s.init_level}\n`;
+            if (s.type === 'socket') yaml += `    icon: "mdi:power-socket-us"\n`;
+            if (s.followId) {
+                const target = controllers.find(c => c.id === s.followId);
+                const targetDomain = (target && target.type === 'light') ? 'light' : 'switch';
+                yaml += `    on_turn_on:\n      - ${targetDomain}.turn_on: ${s.followId}\n    on_turn_off:\n      - ${targetDomain}.turn_off: ${s.followId}\n`;
+            }
+            yaml += `\n`;
+        });
+    }
+
+    if (buttons.length) {
+        yaml += `binary_sensor:\n`;
+        buttons.forEach(b => {
+            yaml += `  - platform: gpio\n    id: ${b.id}\n    pin:\n      number: GPIO${b.gpio}\n      mode: ${b.pullup === 'true' ? 'INPUT_PULLUP' : 'INPUT'}\n`;
+            if (b.invert === 'true') yaml += `      inverted: true\n`;
+            yaml += `    name: "${b.name}"\n`;
+            if (b.target_id !== '__disabled__') {
+                const targetCtrl = controllers.find(c => c.id === b.target_id);
+                const domain = (targetCtrl && targetCtrl.type === 'light') ? 'light' : 'switch';
+                yaml += `    on_click:\n      - min_length: ${b.min_ms}ms\n        max_length: ${b.max_ms}ms\n        then:\n          - ${domain}.${b.action}: ${b.target_id}\n`;
+            } else {
+                yaml += `    # 未绑定\n`;
+            }
+            yaml += `\n`;
+        });
+    }
+
+    if (hkEnable && window._hkCheckedIds) {
+        yaml += `external_components:\n  - source:\n`;
+        if (extType === 'git') {
+            let repo = document.getElementById('ext_repo_url')?.value.trim();
+            if (!repo) repo = 'https://github.com/txhtxh11/AIESP';
+            const pathRaw = document.getElementById('ext_path')?.value.trim();
+            yaml += `      type: git\n      url: ${repo}\n`;
+            if (pathRaw && pathRaw !== '') {
+                yaml += `      path: ${pathRaw}\n`;
+            }
+            yaml += `    refresh: ${extRefresh}\n`;
+        } else {
+            const localPath = document.getElementById('ext_local_path')?.value.trim() || '/config/my_components';
+            yaml += `      type: local\n      path: ${localPath}\n`;
+            yaml += `    refresh: 0s\n`;
+        }
+        const comps = extComps.split(',').map(s => s.trim()).filter(s => s);
+        yaml += `    components: [${comps.length ? comps.join(', ') : 'homekit'}]\n\n`;
+
+        yaml += `homekit:\n  id: ${hkId}\n  setup_code: "${hkCode}"\n`;
+        const checkedControllers = controllers.filter(c => window._hkCheckedIds.has(c.id));
+        const checkedButtons = buttons.filter(b => window._hkCheckedIds.has(b.id));
+        const checkedSwitches = checkedControllers.filter(c => c.type === 'switch' || c.type === 'socket');
+        const checkedLights = checkedControllers.filter(c => c.type === 'light');
+
+        if (checkedSwitches.length) yaml += `  switches:\n` + checkedSwitches.map(s => `    - ${s.id}\n`).join('');
+        if (checkedLights.length) yaml += `  lights:\n` + checkedLights.map(l => `    - ${l.id}\n`).join('');
+        if (checkedButtons.length) yaml += `  binary_sensors:\n` + checkedButtons.map(b => `    - id: ${b.id}\n      type: contact\n`).join('');
+        yaml += `\n`;
+
+        if (auxReset) yaml += `button:\n  - platform: template\n    name: "重置 HomeKit 配对"\n    id: reset_homekit_btn\n    icon: "mdi:restart-alert"\n    on_press:\n      - homekit.reset_storage: ${hkId}\n\n`;
+        if (auxSensor) yaml += `text_sensor:\n  - platform: template\n    name: "HomeKit 配对码状态"\n    id: hk_setup_text_sensor\n    update_interval: ${sensorInterval}\n    lambda: |-\n      std::string code = id(${hkId})->get_setup_code();\n      if (code.empty()) return std::string("等待生成中");\n      return code;\n\n`;
+    }
+
+    yaml += `# ========== 配置结束 ==========\n`;
+    document.getElementById('yaml_preview').textContent = yaml;
+    return yaml;
+}
+
+// =====================================================================
+// CMPOWER W1 PRESET (full content preserved)
+// =====================================================================
+function getCmpowerYamlContent() {
+    return `# ESPHome + HomeKit + SY7T609 配置 (CMPOWER W1 优化版)
+# 生成时间: ${new Date().toLocaleString()}
+
+substitutions:
+  node_name: "powerboard-homekit"
+  node_name_friendly: "🔌 智能插排 (Smart Power Strip)"
+  node_project_name: "CMCC.CMPOWER-W1"
+  node_project_version: "v6.0.1"
+  node_build_min_version: "2026.1.0"
+  device_mid: "ESP32_POWERBOARD_HOMEKIT"
+
+  # GPIO 物理引脚定义
+  button_pin: GPIO4 
+  relay_master_pin: GPIO0
+  relay_slave_pin: GPIO12
+  relay_enable_pin: GPIO15
+  led_blue_pin: GPIO16
+  led_red_pin: GPIO14
+  led_white_pin: GPIO5
+
+safe_mode:
+  reboot_timeout: 5min
+
+http_request:
+  verify_ssl: false
+
+esphome:
+  name: \${node_name}
+  friendly_name: \${node_name_friendly}
+  project:
+    name: \${node_project_name}
+    version: \${node_project_version}
+  name_add_mac_suffix: true
+  min_version: \${node_build_min_version}
+  
+  platformio_options:
+    board_build.f_cpu: 160000000L
+    board_build.ldscript: eagle.flash.4m1m.ld
+    build_flags:
+      - "-D HOMEKIT_LOG_LEVEL=0 -D ARDUINO_HOMEKIT_LOWROM"
+  on_boot:
+    priority: 800
+    then:
+      - lambda: |-
+          WiFi.setPhyMode(WIFI_PHY_MODE_11G);
+          
+esp8266:
+  board: esp12e
+  restore_from_flash: true
+
+preferences:
+  flash_write_interval: 5min
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/txhtxh11/cmpower
+    components: [homekit, sy7t609]
+
+wifi:
+  min_auth_mode: WPA
+  reboot_timeout: 0s
+  on_connect:
+    - light.turn_on: id_led_blue
+  on_disconnect:
+    - light.turn_off: id_led_blue
+  ap:
+    ssid: "CMPOWER-W1"
+    password: ""
+    
+captive_portal:
+
+web_server:
+  port: 80
+  version: 1
+
+api:
+  reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+
+time:
+  - platform: homeassistant
+    id: id_homeassistant_time
+    timezone: "Asia/Shanghai"
+
+uart:
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+  baud_rate: 9600
+
+globals:
+  - id: id_energy_counter_persist
+    type: float
+    restore_value: yes
+    initial_value: '0.0'
+  - id: id_energy_counter_lastvalue
+    type: float
+    restore_value: no
+    initial_value: '0.0'
+
+text_sensor:
+  - platform: wifi_info
+    ssid:
+      name: SSID 名称
+      icon: "mdi:signal-variant"
+    ip_address:
+      name: IP 地址
+      icon: "mdi:ip-network"
+    mac_address:
+      name: Mac 地址
+      icon: "mdi:wifi-marker"
+  - platform: template
+    name: "HomeKit 配对码"
+    id: id_homekit_setup_code
+    icon: "mdi:qrcode"
+    update_interval: 1h
+    lambda: |-
+      std::string code = id(my_hk)->get_setup_code();
+      if (code.empty()) {
+        return {"等待生成"};
+      }
+      return {code};
+
+output:
+  - platform: gpio
+    id: id_pin_trigger_relay_enable
+    pin:
+      number: \${relay_enable_pin}
+      inverted: true
+  - platform: gpio
+    id: id_pin_relay_master
+    pin:
+      number: \${relay_master_pin}
+      inverted: true
+  - platform: gpio
+    id: id_pin_relay_slave
+    pin:
+      number: \${relay_slave_pin}
+      inverted: true
+  - platform: esp8266_pwm
+    id: id_pin_led_white
+    pin:
+      number: \${led_white_pin}
+      inverted: true
+  - platform: esp8266_pwm
+    id: id_pin_led_blue
+    pin:
+      number: \${led_blue_pin}
+      inverted: true
+  - platform: esp8266_pwm
+    id: id_pin_led_red
+    pin:
+      number: \${led_red_pin}
+      inverted: true
+
+light:
+  - platform: monochromatic
+    name: "⚪ 分路指示灯 (Slave Indicator)"
+    id: id_led_white
+    output: id_pin_led_white
+    internal: true
+  - platform: monochromatic
+    name: "🔵 WIFI状态灯 (WiFi Status)"
+    id: id_led_blue
+    output: id_pin_led_blue
+    internal: true
+  - platform: status_led
+    name: "🔴 系统状态灯 (System Status)"
+    id: id_led_red
+    output: id_pin_led_red
+    internal: true
+
+button:
+  - platform: template
+    name: "重置 HomeKit"
+    on_press:
+      - homekit.reset_storage: my_hk
+  - platform: output
+    id: id_trigger_relay_enable
+    output: id_pin_trigger_relay_enable
+    duration: 10ms
+    internal: true
+  - platform: template
+    name: "♻️ 重置累计电量 (Reset Energy)"
+    entity_category: config
+    on_press:
+      then:
+        - globals.set:
+            id: id_energy_counter_persist
+            value: '0.0'
+        - sy7t609.reset_energy: id_sensor_sy7t609
+
+switch:
+  - platform: template
+    name: "⚡总开关 Master Switch"
+    id: id_relay_master_logic
+    lambda: "return id(id_relay_master_real).state;"
+    turn_on_action:
+      - switch.turn_on: id_relay_master_real
+    turn_off_action:
+      - switch.turn_off: id_relay_master_real
+
+  - platform: template
+    name: "🔌分路开关 Slave Switch"
+    id: id_relay_slave_logic
+    lambda: "return id(id_relay_master_real).state && id(id_relay_slave_real).state;"
+    turn_on_action:
+      - switch.turn_on: id_relay_slave_real
+      - switch.turn_on: id_relay_master_real
+    turn_off_action:
+      - switch.turn_off: id_relay_slave_real
+
+  - platform: output
+    id: id_relay_master_real
+    output: id_pin_relay_master
+    internal: true
+    on_turn_on:
+      - button.press: id_trigger_relay_enable
+      - lambda: "if(id(id_relay_slave_real).state) id(id_led_white).turn_on().perform();"
+    on_turn_off:
+      - button.press: id_trigger_relay_enable
+      - lambda: "id(id_led_white).turn_off().perform();"
+
+  - platform: output
+    id: id_relay_slave_real
+    output: id_pin_relay_slave
+    internal: true
+    on_turn_on:
+      - button.press: id_trigger_relay_enable
+      - lambda: "if(id(id_relay_master_real).state) id(id_led_white).turn_on().perform();"
+    on_turn_off:
+      - button.press: id_trigger_relay_enable
+      - lambda: "id(id_led_white).turn_off().perform();"
+
+  - platform: restart
+    name: "🔄 系统重启 (System Restart)"
+  
+  - platform: factory_reset
+    name: "🏭 恢复出厂设置 (Factory Reset)"
+    id: id_factoryreset
+
+sensor:
+  - platform: sy7t609
+    id: id_sensor_sy7t609
+    voltage:
+      name: "⚡ 电压 (Voltage)"
+    current:
+      name: "🌊 电流 (Current)"
+    power:
+      name: "💡 功率 (Power)"
+      id: id_sensor_power
+    energy:
+      id: id_sensor_energy
+      internal: true
+    update_interval: 3s
+    reactive_power:
+      name: "👻 无功功率 (Reactive Power)"
+      id: id_sensor_reactive_power
+    power_factor:
+      name: "📊 功率因数 (Power Factor)"
+      id: id_sensor_power_factor
+    frequency:
+      name: "📈 频率 (Frequency)"
+      id: id_sensor_frequency
+    chip_temperature:
+      name: "🌡️ 芯片温度 (Chip Temp)"
+  - platform: total_daily_energy
+    name: "📅 今日用电量 (Daily Energy)"
+    id: id_total_daily_energy_median
+    power_id: id_sensor_power
+    accuracy_decimals: 3
+    unit_of_measurement: kWh
+    restore: true
+    filters:
+      - multiply: 0.001
+
+  - platform: copy
+    name: "🔋 累计电量 (Total Energy)"
+    id: id_sensor_energy_counter_persist
+    source_id: id_sensor_energy
+    accuracy_decimals: 3
+    unit_of_measurement: kWh
+    filters:
+      - lambda: |-
+          if(x < id(id_energy_counter_persist)) {
+            float delta = x - id(id_energy_counter_lastvalue);
+            id(id_energy_counter_persist) += delta;
+            id(id_energy_counter_lastvalue) = x;
+          } else {
+            id(id_energy_counter_persist) = x;
+          }
+          return id(id_energy_counter_persist);
+      - multiply: 0.001
+
+binary_sensor:
+  - platform: gpio
+    id: id_power_key
+    internal: true
+    pin:
+      number: \${button_pin}
+      inverted: true
+      mode: INPUT_PULLUP
+    on_multi_click:
+      - timing:
+          - ON for at most 0.3s
+          - OFF for at least 0.2s
+        then:
+          - switch.toggle: id_relay_slave_logic
+      - timing:
+          - ON for at most 0.5s
+          - OFF for at most 0.5s
+          - ON for at most 0.5s
+          - OFF for at least 0.2s
+        then:
+          - switch.toggle: id_relay_master_logic
+      - timing:
+          - ON for at least 5s
+        then:
+          - switch.turn_on: id_factoryreset
+
+homekit:
+  id: my_hk
+  setup_code: "111-11-111"
+  switches:
+    - id_relay_slave_logic
+    - id_relay_master_logic
+
+# ========== 配置结束 ==========`;
+}
+
+// =====================================================================
+// COPY
+// =====================================================================
+function setupCopy() {
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+        const txt = document.getElementById('yaml_preview').textContent;
+        if (!txt || txt === '# 正在生成配置...') { showToast('暂无配置'); return; }
+        if (navigator.clipboard && window.isSecureContext) {
+            try { await navigator.clipboard.writeText(txt); showToast('📋 已复制到剪贴板!'); return; } catch (e) {}
+        }
+        const ta = document.createElement('textarea');
+        ta.value = txt; ta.style.cssText = 'position:fixed;top:-9999px;';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); showToast('📋 已复制!'); } catch(e) { showToast('复制失败，请手动复制'); }
+        document.body.removeChild(ta);
+    });
+}
+
+// =====================================================================
+// SAFE DOWNLOAD
+// =====================================================================
+function safeDownload(content, filename) {
+    const ua = navigator.userAgent;
+    const isFeiNiuWebView = /FN|FeiNiu|飞牛|WebView|wv/i.test(ua) ||
+        /Android.*AppleWebKit.*Mobile.*Safari/.test(ua);
+    try {
+        if (isFeiNiuWebView) {
+            const dataUrl = 'data:application/octet-stream;charset=utf-8,' + encodeURIComponent(content);
+            const link = document.createElement('a');
+            link.href = dataUrl; link.download = filename; link.style.cssText = 'display:none;';
+            document.body.appendChild(link);
+            link.dispatchEvent(new MouseEvent('click', { view: window, bubbles: true, cancelable: false }));
+            setTimeout(() => { if (link.parentNode) link.parentNode.removeChild(link); }, 100);
+            return true;
+        }
+        const blob = new Blob([content], { type: 'text/yaml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = filename; link.style.display = 'none';
+        document.body.appendChild(link); link.click();
+        setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(url); }, 100);
+        return true;
+    } catch (e) { console.warn('Download failed:', e); return false; }
+}
+
+function setupDownload() {
+    const btn = document.getElementById('downloadBtn');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+        const txt = document.getElementById('yaml_preview').textContent;
+        if (!txt || txt === '# 正在生成配置...') { showToast('暂无配置可下载'); return; }
+        const filename = `${document.getElementById('device_name')?.value || 'esp_config'}.yaml`;
+        safeDownload(txt, filename);
+        showToast('💾 下载中...');
+    });
+}
+
+// CM copy
+async function handleCmCopy() {
+    const content = getCmpowerYamlContent();
+    if (navigator.clipboard && window.isSecureContext) {
+        try { await navigator.clipboard.writeText(content); showToast('📋 CMPOWER 配置已复制!'); return; } catch (e) {}
+    }
+    const ta = document.createElement('textarea');
+    ta.value = content; ta.style.cssText = 'position:fixed;top:-9999px;';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); showToast('📋 已复制!'); } catch(e) { showToast('复制失败'); }
+    document.body.removeChild(ta);
+}
+
+function handleCmDownload() {
+    safeDownload(getCmpowerYamlContent(), 'cmpower_w1_optimized.yaml');
+    showToast('💾 CMPOWER 配置下载中...');
+}
+
+function setupCmButtons() {
+    document.getElementById('cmCopyBtn')?.addEventListener('click', handleCmCopy);
+    document.getElementById('cmDownloadBtn')?.addEventListener('click', handleCmDownload);
+}
+
+// =====================================================================
+// INIT
+// =====================================================================
+function initAll() {
+    loadTheme();
+
+    // Ensure HomeKit entities set exists
+    if (!window._hkCheckedIds) window._hkCheckedIds = new Set();
+
+    // Auto-create the first controller from quick GPIO
+    syncQuickController();
+
+    // Render UI
+    renderControllersUI();
+    renderButtonsUI();
+    renderYAML();
+
+    // Bind events
+    setupCopy();
+    setupDownload();
+    setupCmButtons();
+
+    // === Bind all input/select changes to renderYAML ===
+    document.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('input', () => renderYAML());
+        el.addEventListener('change', () => renderYAML());
+    });
+
+    // Key: quick_gpio change rebuilds the controller
+    const quickGpio = document.getElementById('quick_gpio');
+    if (quickGpio) {
+        quickGpio.addEventListener('input', () => syncQuickController());
+        quickGpio.addEventListener('change', () => syncQuickController());
+    }
+
+    document.getElementById('web').addEventListener('change', () => { onWebChange(); });
+    document.getElementById('board_select').addEventListener('change', onBoardChange);
+    document.getElementById('flash_size').addEventListener('change', onFlashChange);
+    document.getElementById('ext_source_type').addEventListener('change', onExtTypeChange);
+    document.getElementById('platform').addEventListener('change', onPlatformChange);
+
+    // Init states
+    onExtTypeChange();
+    onWebChange();
+    onPlatformChange();
+    onHkEnableChange();
+}
+
+document.addEventListener('DOMContentLoaded', initAll);
+
+// Expose for onclick handlers
+window.togglePanel = togglePanel;
+window.toggleSubPanel = toggleSubPanel;
+window.toggleAdvSection = toggleAdvSection;
+window.addController = addController;
+window.removeController = removeController;
+window.editController = editController;
+window.cancelEditController = cancelEditController;
+window.addButtonMapping = addButtonMapping;
+window.removeButton = removeButton;
+window.presetLight = presetLight;
+window.presetSwitch = presetSwitch;
+window.presetSocket = presetSocket;
+window.presetCmpower = presetCmpower;
+window.presetClear = presetClear;
+window.generateRandomCode = generateRandomCode;
+window.setNeverValue = setNeverValue;
+window.toggleAdvSettings = toggleAdvSettings;
+window.toggleHelp = toggleHelp;
+window.syncQuickController = syncQuickController;
+window.onCtrlTypeChange = onCtrlTypeChange;
+window.onHkEnableChange = onHkEnableChange;
+window.onExtTypeChange = onExtTypeChange;
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+<script>
+(function(){
+    var timer = null;
+    var display = document.getElementById('visitDisplay');
+    var source = document.getElementById('busuanzi_value_site_pv');
+    var title = document.getElementById('footerTitle');
+    if(!title||!display||!source) return;
+    title.onclick = function(){
+        var n = source.textContent||'';
+        if(!n||n==='0') return;
+        display.textContent = '· '+n;
+        display.style.display = '';
+        void display.offsetWidth;
+        display.style.opacity = '1';
+        clearTimeout(timer);
+        timer = setTimeout(function(){
+            display.style.opacity = '0';
+            setTimeout(function(){ display.style.display = 'none'; }, 300);
+        }, 10000);
+    };
+})();
+</script>
+
+</body>
+</html>

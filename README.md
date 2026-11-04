@@ -4,6 +4,16 @@
 
 **在线使用**：https://esp-homekit.pages.dev/
 
+## 历史版本存档
+
+早期版本保留在 `archive/` 下，直接访问也能用（编译接口向后兼容）：
+
+| 文件 | 说明 | 在线 |
+|---|---|---|
+| `archive/733efac9.html` | 2026-11-03 白天线上版本（作者长期使用的老界面，无整机模板） | [打开](https://txhtxh11.github.io/esp-homekit/archive/733efac9.html) |
+
+对应 Cloudflare 永久快照：https://733efac9.esp-homekit.pages.dev/
+
 ## 能做什么
 
 | 功能 | 说明 |
