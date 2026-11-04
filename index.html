@@ -2251,8 +2251,79 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             hk_code: fmtHkCode(state.hkCode).replace(/\D/g, "")
         };
         Object.keys(dev.vars || {}).forEach(k => { bmap[k] = dev.vars[k]; });
-        return String(def.yaml || "").replace(/\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g, (m, k) =>
+        const out = String(def.yaml || "").replace(/\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g, (m, k) =>
             Object.prototype.hasOwnProperty.call(bmap, k) ? String(bmap[k] == null ? "" : bmap[k]) : m);
+        // 整机模板也支持注入巴法云：把模板里的开关一个个挂上主题
+        return (state.bemfa.on && /^[A-Za-z0-9]{8,}$/.test(state.bemfa.uid || "")) ? injectTplBemfa(out) : out;
+    }
+
+    // 给整机模板的 YAML 注入巴法云：开关加 on_turn_on/off 上报，末尾补 mqtt 段
+    function injectTplBemfa(yaml) {
+        const uid = state.bemfa.uid || "";
+        if (/^mqtt:/m.test(yaml)) return yaml;          // 模板自带 mqtt，不重复注入
+        const lines = yaml.split("\n");
+        const start = lines.findIndex(l => /^switch:\s*$/.test(l));
+        if (start < 0) return yaml;                     // 没有 switch 段，跳过
+
+        // 找到 switch 段的结束位置（下一个顶格 key）
+        let end = lines.length;
+        for (let i = start + 1; i < lines.length; i++) {
+            if (/^[A-Za-z_]/.test(lines[i])) { end = i; break; }
+        }
+        const body = lines.slice(start + 1, end);
+        const blocks = [];
+        let cur = null;
+        body.forEach(l => {
+            if (/^\s{2}- /.test(l)) { if (cur) blocks.push(cur); cur = [l]; }
+            else if (cur) cur.push(l);
+        });
+        if (cur) blocks.push(cur);
+
+        const topics = [];
+        blocks.forEach(blk => {
+            const text = blk.join("\n");
+            if (/internal:\s*true/.test(text)) return;
+            const idm = text.match(/^\s+id:\s*([A-Za-z0-9_]+)\s*$/m);
+            if (!idm) return;
+            const id = idm[1];
+            if (/on_turn_on:/.test(text) || /on_turn_off:/.test(text)) return;   // 已有回调，避免重复键
+            const topic = bemfaTopic(id, "006");
+            topics.push({ id: id, topic: topic });
+            while (blk.length && blk[blk.length - 1].trim() === "") blk.pop();
+            blk.push("    on_turn_on:");
+            blk.push("      - mqtt.publish:");
+            blk.push("          topic: " + topic + "/set");
+            blk.push('          payload: "on"');
+            blk.push("    on_turn_off:");
+            blk.push("      - mqtt.publish:");
+            blk.push("          topic: " + topic + "/set");
+            blk.push('          payload: "off"');
+        });
+        if (!topics.length) return yaml;
+
+        const rebuilt = [].concat(lines.slice(0, start + 1), ...blocks.map((b, i) => (i === blocks.length - 1 ? b : b.concat([""]))), lines.slice(end));
+        const out = rebuilt.join("\n");
+        const mq = [];
+        mq.push("");
+        mq.push("# ================= 巴法云（模板注入） =================");
+        topics.forEach(t => mq.push("#   " + t.topic + "   " + t.id));
+        mq.push("mqtt:");
+        mq.push("  broker: bemfa.com");
+        mq.push("  port: 9501");
+        mq.push('  username: "' + uid + '"');
+        mq.push('  password: "' + uid + '"');
+        mq.push('  client_id: "' + uid + '"');
+        mq.push('  topic_prefix: "esphome_bridge"');
+        mq.push("  discovery: false");
+        mq.push("  on_message:");
+        topics.forEach(t => {
+            mq.push("    - topic: " + t.topic);
+            mq.push("      then:");
+            mq.push("        - lambda: |-");
+            mq.push('            if (x == "on") { id(' + t.id + ').turn_on(); }');
+            mq.push('            else if (x == "off") { id(' + t.id + ').turn_off(); }');
+        });
+        return out.replace(/\s*$/, "") + "\n" + mq.join("\n") + "\n";
     }
 
     function buildYaml() {
