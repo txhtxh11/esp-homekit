@@ -1870,6 +1870,14 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             toggleCards(ledRow, dev.io.statusLed, { offSub: "不启用", onSub: "断网亮 / 联网灭" },
                 v => { dev.io.statusLed = v; });
             ioSection.appendChild(ledRow);
+
+            // 只做指示灯的开关（如板载蓝灯/红灯）：照常出现在设备网页，但不进家庭 App
+            if (typeof dev.io.localOnly !== "boolean") dev.io.localOnly = false;
+            const loRow = document.createElement("div"); loRow.className = "form-row";
+            loRow.innerHTML = '<label class="form-label">仅作指示灯</label>';
+            toggleCards(loRow, dev.io.localOnly, { offSub: "接入 HomeKit", onSub: "只在本机网页" },
+                v => { dev.io.localOnly = v; });
+            ioSection.appendChild(loRow);
         }
         body.appendChild(ioSection);
 
@@ -2931,7 +2939,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             G.push('  setup_code: "' + fmtHkCode(state.hkCode) + '"');
             if (relays.length) {
                 G.push("  switch:");
-                relays.forEach(dev => {
+                relays.filter(d => !(d.io && d.io.localOnly)).forEach(dev => {
                     G.push("    - id: " + dev.uid);
                     G.push("      meta:");
                     G.push('        name: "' + yamlStr(dev.name) + '"');
@@ -2967,7 +2975,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             G.push('  setup_code: "' + fmtHkCode(state.hkCode) + '"');
             if (relays.length) {
                 G.push("  switches:");
-                relays.forEach(dev => G.push("    - " + dev.uid));
+                relays.filter(x => !(x.io && x.io.localOnly)).forEach(dev => G.push("    - " + dev.uid));
             }
             if (bins.length) {
                 // 人体感应映射到 HomeKit 的 motion 服务，否则会被当成门窗传感器
