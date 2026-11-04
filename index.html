@@ -1269,7 +1269,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 if (ex) openDetail(ex.uid); else addDevice(def.id);
             }]];
             if (tpl) {
-                items.push(["✎", "编辑", () => { tplBackFn = null; hideSheets(); showTplEditor(tpl); }, true]);
+                items.push(["✎", "编辑", () => { tplBackFn = null; hideSheets(); showTplEditor(tpl); }]);
                 items.push(["🗑", "删除", () => { hideSheets(); deleteTpl(tpl.id); }]);
             }
             items.forEach(([ico, label, fn, keep]) => {
