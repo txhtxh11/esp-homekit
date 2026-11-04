@@ -1843,9 +1843,9 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 v => { dev.io.inverted = v; });
             ioSection.appendChild(invRow);
             if (dev.type === "button") {
-                // 物理按键专属：长按自定义时长（秒）恢复出厂
+                // 物理按键专属：长按自定义时长重置 HomeKit 配对
                 const frRow = document.createElement("div"); frRow.className = "form-row";
-                frRow.innerHTML = '<label class="form-label">长按恢复出厂</label>';
+                frRow.innerHTML = '<label class="form-label">长按重置 HomeKit</label>';
                 toggleCards(frRow, !!dev.io.longReset, { offSub: "不启用", onSub: "长按自定义时长" }, v => {
                     dev.io.longReset = v;
                     renderDetailGeneric(dev);   // 需要在下方插入秒数输入框
@@ -2816,14 +2816,20 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             const multiItems = [];
             dev.actions.forEach(act => {
                 if (act.event === "on_long") {
-                    multiItems.push({ times: ["- ON for at least 1s"], action: "- " + opFor(act.op) + ": " + act.target });
+                    multiItems.push({ times: ["- ON for at least 1s"], lines: ["- " + opFor(act.op) + ": " + act.target] });
                 } else if (act.event === "on_double") {
-                    multiItems.push({ times: ["- ON for at most 0.4s", "- OFF for at most 0.4s", "- ON for at most 0.4s", "- OFF for at least 0.2s"], action: "- " + opFor(act.op) + ": " + act.target });
+                    multiItems.push({ times: ["- ON for at most 0.4s", "- OFF for at most 0.4s", "- ON for at most 0.4s", "- OFF for at least 0.2s"], lines: ["- " + opFor(act.op) + ": " + act.target] });
                 }
             });
+            // 长按：直接调组件的 reset_storage 清空 HomeKit 配对
             if (dev.type === "button" && dev.io && dev.io.longReset) {
                 const sec = Math.min(Math.max(parseInt(dev.io.longResetSec, 10) || 5, 1), 60);
-                multiItems.push({ times: ["- ON for at least " + sec + "s"], action: "- switch.turn_on: factory_reset_sw" });
+                multiItems.push({
+                    times: ["- ON for at least " + sec + "s"],
+                    lines: state.chip === "esp8266"
+                        ? ["- homekit.reset_storage:", "    id: my_hk"]
+                        : ["- lambda: 'ESP.restart();'"]
+                });
             }
             if (multiItems.length) {
                 G.push(ind + "on_multi_click:");
@@ -2831,7 +2837,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                     G.push(ind + "  - timing:");
                     it.times.forEach(t => G.push(ind + "      " + t));
                     G.push(ind + "    then:");
-                    G.push(ind + "      " + it.action);
+                    it.lines.forEach(l => G.push(ind + "      " + l));
                 });
             }
         };
@@ -2866,14 +2872,6 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             });
             switchBlocks.push(lines);
         });
-        // 物理按键长按恢复出厂的执行开关（内部实体，仅由长按触发）
-        if (state.devices.some(b => b.type === "button" && b.io && b.io.longReset)) {
-            switchBlocks.push([
-                "  - platform: factory_reset",
-                "    id: factory_reset_sw",
-                "    internal: true"
-            ]);
-        }
         if (switchBlocks.length) {
             G.push("switch:");
             switchBlocks.forEach(lines => { lines.forEach(l => G.push(l)); G.push(""); });
