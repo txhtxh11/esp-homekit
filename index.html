@@ -294,6 +294,9 @@
     .btn-danger:active { background: rgba(var(--danger-rgb), .12); }
 
     .sheet pre { margin: 0 14px; flex: 1; min-height: 180px; max-height: 56vh; max-height: 56dvh; overflow: auto; background: var(--code-bg); border: 1px solid var(--line); border-radius: 0; padding: 14px; font-size: 12px; line-height: 1.65; font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--code-text); white-space: pre; -webkit-overflow-scrolling: touch; }
+    /* 配置代码可编辑：textarea 与原来的 pre 同款外观 */
+    .sheet textarea#codeOut { margin: 0 14px; flex: 1; min-height: 180px; max-height: 56vh; max-height: 56dvh; overflow: auto; background: var(--code-bg); border: 1px solid var(--line); border-radius: 0; padding: 14px; font-size: 12px; line-height: 1.65; font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--code-text); white-space: pre; resize: none; outline: none; tab-size: 2; -webkit-overflow-scrolling: touch; }
+    .sheet textarea#codeOut:focus { border-color: var(--accent); }
 
     .info-box { padding: 11px 13px; background: rgba(var(--accent-rgb), .06); border: 1px dashed rgba(var(--accent-rgb), .3); border-radius: 0; font-size: 12.5px; color: var(--text-sub); line-height: 1.55; margin-bottom: 14px; }
 
@@ -406,11 +409,11 @@
         color: var(--muted); word-break: break-all; white-space: pre-wrap;
     }
     /* 所有卡内滚动区统一隐藏滚动条：视觉上不留原生控件，但滚轮 / 触摸 / 拖拽照常滚动 */
-    .flash-log, .compile-status, .sheet-body, .sheet pre, .accent-pop, .tpl-textarea {
+    .flash-log, .compile-status, .sheet-body, .sheet pre, .sheet textarea#codeOut, .accent-pop, .tpl-textarea {
         scrollbar-width: none; -ms-overflow-style: none;
     }
     .flash-log::-webkit-scrollbar, .compile-status::-webkit-scrollbar, .sheet-body::-webkit-scrollbar,
-    .sheet pre::-webkit-scrollbar, .accent-pop::-webkit-scrollbar, .tpl-textarea::-webkit-scrollbar {
+    .sheet pre::-webkit-scrollbar, .sheet textarea#codeOut::-webkit-scrollbar, .accent-pop::-webkit-scrollbar, .tpl-textarea::-webkit-scrollbar {
         width: 0; height: 0; display: none;
     }
     /* 共用日志窗口：烧录日志灰、串口输出亮、系统/连接提示主题色 */
@@ -815,7 +818,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         <span id="codeTitle">配置代码<span id="codeHint" class="sheet-hint" hidden></span></span>
         <button class="close" id="codeClose">✕</button>
     </div>
-    <pre id="codeOut"></pre>
+    <textarea id="codeOut" spellcheck="false" wrap="off"></textarea>
     <div class="sheet-foot">
         <div class="btn-grid quad">
             <button class="btn-sec" id="btnCopyInside">复制代码</button>
@@ -3231,8 +3234,27 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     }
 
     // 编译一次，返回可直接烧录的 bin（onTick 用于刷新进度文案）
+    // 配置代码里手动改过的内容（编译/复制/下载/存模板都用它）
+    const codeState = { dirty: false, text: "" };
+    function yamlForUse() {
+        return codeState.dirty && codeState.text.trim() ? codeState.text : buildYaml();
+    }
+    function paintCodeHint() {
+        const bad = state.bemfa.on && !/^[A-Za-z0-9]{8,}$/.test(state.bemfa.uid || "");
+        const hint = $("codeHint");
+        const parts = [];
+        if (bad) parts.push("缺私钥");
+        if (codeState.dirty) parts.push("已改 · 点此恢复");
+        hint.textContent = parts.length ? "· " + parts.join(" · ") : "";
+        hint.hidden = !parts.length;
+        hint.style.cursor = codeState.dirty ? "pointer" : "";
+        hint.onclick = codeState.dirty
+            ? () => { codeState.dirty = false; codeState.text = ""; $("codeOut").value = buildYaml(); paintCodeHint(); }
+            : null;
+    }
+
     async function runCompile(onTick) {
-        const y = buildYaml();
+        const y = yamlForUse();
         const cmNow = cmDev();
         const cmNowDef = cmNow ? cmDef(cmNow.type) : null;
         const deviceName = cmNowDef ? (cmNowDef.node || tplSlug(cmNow.name)) : "esp_homekit_device";
@@ -3380,7 +3402,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
 
     async function quickCopy() {
         if (!ensureDevices()) return;
-        const ok = await copyText(buildYaml());
+        const ok = await copyText(yamlForUse());
         showToast(ok ? "✅ YAML 已复制到剪贴板" : "❌ 复制失败，请在代码弹层中手动复制");
     }
 
@@ -3389,7 +3411,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         const cmNow = cmDev();
         const cmNowDef = cmNow ? cmDef(cmNow.type) : null;
         const fileName = cmNowDef ? (cmNowDef.file || tplSlug(cmNow.name) + ".yaml") : "esphome-config.yaml";
-        const blob = new Blob([buildYaml()], { type: "text/yaml;charset=utf-8" });
+        const blob = new Blob([yamlForUse()], { type: "text/yaml;charset=utf-8" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = fileName;
@@ -3399,12 +3421,15 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     }
 
     function openCode() {
-        // 巴法云缺私钥时，提示直接跟在窗标题后面（不再弹 toast）
-        const bad = state.bemfa.on && !/^[A-Za-z0-9]{8,}$/.test(state.bemfa.uid || "");
-        const hint = $("codeHint");
-        hint.textContent = bad ? "· 缺私钥" : "";
-        hint.hidden = !bad;
-        $("codeOut").textContent = buildYaml();
+        const ta = $("codeOut");
+        ta.value = codeState.dirty ? codeState.text : buildYaml();
+        // 手动改过的内容会被编译、复制、下载、存模板一并采用
+        ta.oninput = () => {
+            codeState.dirty = true;
+            codeState.text = ta.value;
+            paintCodeHint();
+        };
+        paintCodeHint();
         showSheet("codeSheet");
     }
 
@@ -4468,7 +4493,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     $("btnOtaInside").addEventListener("click", downloadOta);
     // 把当前这份配置直接存成「整机模板」卡片（不进编辑器，之后点卡片再编辑）
     $("btnTplFromCode").addEventListener("click", () => {
-        const y = buildYaml();
+        const y = yamlForUse();
         let yml = y
             .replace(/(friendly_name:\s*)".*?"/, '$1"{{deviceName}}"')
             .replace(/(\n\s*ssid:\s*).*/, '$1"{{wifi_ssid}}"')
