@@ -685,11 +685,16 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         </section>
 
         <section id="bemfaSection">
-            <div class="section-title"><h2>巴法云</h2><span>手机远程</span></div>
+            <div class="section-title"><h2>巴法云</h2><span id="bemfaHint">手机远程</span></div>
             <div id="bemfaToggle"></div>
             <div id="bemfaBox" hidden>
                 <div class="pair-2" style="margin-top:10px;margin-bottom:10px"><input class="pair-input" id="bemfaUid" placeholder="巴法云私钥 UID" autocomplete="off" spellcheck="false" aria-label="巴法云私钥 UID"></div>
                 <div class="grid" id="bemfaTopics"></div>
+            </div>
+            <div id="bemfaLocked" class="card" hidden>
+                <span class="ico">☁️</span>
+                <span class="name">自定义整机模板</span>
+                <span class="sub">巴法云写进模板 YAML 里</span>
             </div>
         </section>
 
@@ -1489,11 +1494,15 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     }
 
     /* ================= 已添加列表 ================= */
-    // 自定义整机模板自带完整 YAML：巴法云那块对它无效，直接收起
+    // 自定义整机模板自带完整 YAML：巴法云交给模板自己写 → 隐藏开关、显示一张说明卡
     function paintBemfaSection() {
         const d = cmDev();
-        const sec = $("bemfaSection");
-        if (sec) sec.hidden = !!(d && !CM_TYPES[d.type]);
+        const custom = !!(d && !CM_TYPES[d.type]);
+        const tog = $("bemfaToggle"), box = $("bemfaBox"), lock = $("bemfaLocked"), hint = $("bemfaHint");
+        if (tog) tog.hidden = custom;
+        if (box) box.hidden = custom || !state.bemfa.on;
+        if (lock) lock.hidden = !custom;
+        if (hint) hint.textContent = custom ? "模板自带" : "手机远程";
     }
 
     function renderDevices() {
@@ -2190,6 +2199,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         $("bemfaBox").hidden = !state.bemfa.on;
         $("bemfaUid").value = state.bemfa.uid;
         renderBemfaTopics();
+        paintBemfaSection();   // 自定义模板下把开关与私钥框收起，只留说明卡
     }
     // 主题卡：既显示话题，又是复制按钮，点完就地变「已复制」
     function renderBemfaTopics() {
