@@ -979,6 +979,51 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     };
     const $ = (id) => document.getElementById(id);
 
+    /* ================= 配置持久化（刷新/关页面不丢） ================= */
+    const STATE_STORE = "esphk_state_v1";
+    let saveTimer = null;
+    function saveState() {
+        try {
+            const snap = {
+                v: 1,
+                chip: state.chip,
+                board: state.board, customBoard: state.customBoard,
+                flash: state.flash, customFlash: state.customFlash,
+                wifi: state.wifi, hkCode: state.hkCode,
+                bemfa: state.bemfa, logLevel: state.logLevel,
+                seq: state.seq,
+                devices: state.devices.map(d => ({
+                    uid: d.uid, type: d.type, name: d.name,
+                    pinOverrides: d.pinOverrides, io: d.io,
+                    actions: d.actions, vars: d.vars, cfg: d.cfg
+                }))
+            };
+            localStorage.setItem(STATE_STORE, JSON.stringify(snap));
+        } catch (e) { }
+    }
+    // 连续改动时合并成一次写入
+    function scheduleSave() {
+        if (saveTimer) return;
+        saveTimer = setTimeout(() => { saveTimer = null; saveState(); }, 300);
+    }
+    function loadState() {
+        try {
+            const raw = localStorage.getItem(STATE_STORE);
+            if (!raw) return false;
+            const s = JSON.parse(raw);
+            if (!s || !Array.isArray(s.devices)) return false;
+            state.chip = s.chip === "esp32" ? "esp32" : "esp8266";
+            ["board", "customBoard", "flash", "customFlash", "wifi", "bemfa"].forEach(k => {
+                if (s[k] && typeof s[k] === "object") Object.assign(state[k], s[k]);
+            });
+            if (typeof s.hkCode === "string" && s.hkCode) state.hkCode = s.hkCode;
+            if (typeof s.logLevel === "string" && s.logLevel) state.logLevel = s.logLevel;
+            if (s.seq && typeof s.seq === "object") state.seq = s.seq;
+            state.devices = s.devices.filter(d => d && d.uid && d.type);
+            return state.devices.length > 0 || !!s.v;   // 有空配置也算恢复成功
+        } catch (e) { return false; }
+    }
+
     /* ================= 整机模板持久化 ================= */
     function loadCmTemplates() {
         try {
@@ -1116,6 +1161,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     }
 
     function renderChips() {
+        scheduleSave();        // 芯片/板型/FLASH 改动也落盘
         const el = $("chipGroup"); el.innerHTML = "";
         const locked = hasCm();
         const fc = forcedChip();
@@ -1241,6 +1287,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
 
     /* ================= 渲染：卡片区 ================= */
     function renderTypes() {
+        scheduleSave();
         const el = $("typeGrid"); el.innerHTML = "";
         const locked = hasCm();
         Object.keys(TYPES).forEach(type => {
@@ -1399,6 +1446,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
 
     /* ================= 已添加列表 ================= */
     function renderDevices() {
+        scheduleSave();        // 设备/引脚一改就落盘
         renderBemfaTopics();   // 巴法云主题列表跟着设备走
         const list = $("deviceList");
         const n = state.devices.length;
@@ -4555,13 +4603,13 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     };
 
     // 板型卡片 / WiFi / 配对码 控件绑定
-    $("customBoardInput").addEventListener("input", e => { state.customBoard[state.chip] = e.target.value.trim(); });
-    $("customFlashInput").addEventListener("input", e => { state.customFlash[state.chip] = e.target.value.trim(); });
-    $("wifiSsid").addEventListener("input", e => { state.wifi.ssid = e.target.value.trim(); });
-    $("wifiPass").addEventListener("input", e => { state.wifi.pass = e.target.value; });
+    $("customBoardInput").addEventListener("input", e => { state.customBoard[state.chip] = e.target.value.trim(); scheduleSave(); });
+    $("customFlashInput").addEventListener("input", e => { state.customFlash[state.chip] = e.target.value.trim(); scheduleSave(); });
+    $("wifiSsid").addEventListener("input", e => { state.wifi.ssid = e.target.value.trim(); scheduleSave(); });
+    $("wifiPass").addEventListener("input", e => { state.wifi.pass = e.target.value; scheduleSave(); });
     // 「扫描」：用摄像头扫手机/路由器上分享 WiFi 的二维码（WIFI:T:WPA;S:名称;P:密码;;），自动填进上面两格
     $("btnWifiScan").addEventListener("click", () => scanWifiQRCode());
-    $("hkCodeInput").addEventListener("input", e => { state.hkCode = e.target.value; });
+    $("hkCodeInput").addEventListener("input", e => { state.hkCode = e.target.value; scheduleSave(); });
     $("hkCodeInput").addEventListener("blur", e => {
         // 不足/超出 8 位时 buildYaml 会静默回退成默认码，导致“看到的码”和“烧进去的码”不一致，
         // 所以失焦时直接把输入框纠正成实际会用的值
@@ -4591,8 +4639,17 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     state.cmTemplates = loadCmTemplates();
     pullTplCloud();
 
+    // 恢复上次的配置：芯片/板型/FLASH/WiFi/配对码/设备卡片全部还原，刷新不用重配
+    if (loadState()) {
+        $("wifiSsid").value = state.wifi.ssid || "";
+        $("wifiPass").value = state.wifi.pass || "";
+        $("hkCodeInput").value = state.hkCode || "111-22-333";
+        $("customBoardInput").value = state.customBoard[state.chip] || "";
+        $("customFlashInput").value = state.customFlash[state.chip] || "";
+    }
+
     // 巴法云控件
-    $("bemfaUid").addEventListener("input", e => { state.bemfa.uid = e.target.value.trim(); bemfaSave(); });
+    $("bemfaUid").addEventListener("input", e => { state.bemfa.uid = e.target.value.trim(); bemfaSave(); scheduleSave(); });
 
     bemfaLoad();
     renderBemfa();
