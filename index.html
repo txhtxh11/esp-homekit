@@ -661,7 +661,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             <div class="section-title"><h2>设备名</h2></div>
             <div class="pair-2">
                 <input class="pair-input" id="nodeNameInput" placeholder="设备名·留空加MAC后缀" spellcheck="false" aria-label="设备名">
-                <input class="pair-input" id="friendlyInput" placeholder="显示名·HomeKit 名称" spellcheck="false" aria-label="显示名">
+                <input class="pair-input" id="friendlyInput" placeholder="显示名·留空同设备名" spellcheck="false" aria-label="显示名">
             </div>
         </section>
 
@@ -2766,7 +2766,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         G.push("esphome:");
         // 设备名：填了就用填的（不再自动加 MAC 后缀），没填沿用默认+MAC 后缀
         const nodeName = (state.nodeName || "").trim();
-        const friendlyName = (state.friendlyName || "").trim();
+        const friendlyName = (state.friendlyName || "").trim() || nodeName;
         G.push('  name: "' + yamlStr(nodeName || "esp_homekit_device") + '"');
         G.push('  friendly_name: "' + yamlStr(friendlyName || "ESP HomeKit 设备") + '"');
         if (!nodeName) G.push("  name_add_mac_suffix: true");
