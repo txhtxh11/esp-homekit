@@ -682,11 +682,11 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             </div>
         </section>
 
-        <section>
+        <section id="bemfaSection">
             <div class="section-title"><h2>巴法云</h2><span>手机远程</span></div>
             <div id="bemfaToggle"></div>
             <div id="bemfaBox" hidden>
-                <div class="pair-2" style="margin-bottom:10px"><input class="pair-input" id="bemfaUid" placeholder="巴法云私钥 UID" autocomplete="off" spellcheck="false" aria-label="巴法云私钥 UID"></div>
+                <div class="pair-2" style="margin-top:10px;margin-bottom:10px"><input class="pair-input" id="bemfaUid" placeholder="巴法云私钥 UID" autocomplete="off" spellcheck="false" aria-label="巴法云私钥 UID"></div>
                 <div class="grid" id="bemfaTopics"></div>
             </div>
         </section>
@@ -1325,10 +1325,15 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         cmActs.style.gridColumn = "1 / -1";
         cmActs.hidden = true;
         let cmActsFor = null;
+        // 选中的整机卡高亮边框
+        const paintCmSel = id => {
+            cmEl.querySelectorAll(".card.cm").forEach(c => c.classList.toggle("sel", !!id && c.dataset.cmId === id));
+        };
         const showCmActs = def => {
-            if (!cmActs.hidden && cmActsFor === def.id) { cmActs.hidden = true; cmActsFor = null; return; }
+            if (!cmActs.hidden && cmActsFor === def.id) { cmActs.hidden = true; cmActsFor = null; paintCmSel(null); return; }
             cmActs.innerHTML = "";
             cmActsFor = def.id;
+            paintCmSel(def.id);
             const tpl = state.cmTemplates.find(t => t.id === def.id) || null;   // 内置整机没有可编辑对象
             const items = [["＋", "配置", () => {
                 const ex = state.devices.find(d => d.type === def.id);
@@ -1345,7 +1350,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 b.innerHTML = '<span class="ico">' + ico + '</span><span class="txt">' + label + '</span>';
                 b.addEventListener("click", () => {
                     // 编辑不收起这一行：改完点取消还能接着点别的
-                    if (!keep) { cmActs.hidden = true; cmActsFor = null; }
+                    if (!keep) { cmActs.hidden = true; cmActsFor = null; paintCmSel(null); }
                     fn();
                 });
                 cmActs.appendChild(b);
@@ -1362,6 +1367,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 '<span class="name">' + esc(def.name) + '</span>' +
                 '<span class="sub">' + esc(def.sub || "整机模板") + '</span>' +
                 (exists ? '<span class="cm-tag">已添加</span>' : '');
+            card.dataset.cmId = def.id;
             card.addEventListener("click", () => showCmActs(def));
             cmEl.appendChild(card);
         });
@@ -1458,8 +1464,16 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     }
 
     /* ================= 已添加列表 ================= */
+    // 自定义整机模板自带完整 YAML：巴法云那块对它无效，直接收起
+    function paintBemfaSection() {
+        const d = cmDev();
+        const sec = $("bemfaSection");
+        if (sec) sec.hidden = !!(d && !CM_TYPES[d.type]);
+    }
+
     function renderDevices() {
         scheduleSave();        // 设备/引脚一改就落盘
+        paintBemfaSection();
         renderBemfaTopics();   // 巴法云主题列表跟着设备走
         const list = $("deviceList");
         const n = state.devices.length;
@@ -2254,7 +2268,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         const out = String(def.yaml || "").replace(/\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g, (m, k) =>
             Object.prototype.hasOwnProperty.call(bmap, k) ? String(bmap[k] == null ? "" : bmap[k]) : m);
         // 整机模板也支持注入巴法云：把模板里的开关一个个挂上主题
-        return (state.bemfa.on && /^[A-Za-z0-9]{8,}$/.test(state.bemfa.uid || "")) ? injectTplBemfa(out) : out;
+        return out;   // 自定义整机模板不注入巴法云（用户自己写）
     }
 
     // 给整机模板的 YAML 注入巴法云：开关加 on_turn_on/off 上报，末尾补 mqtt 段
