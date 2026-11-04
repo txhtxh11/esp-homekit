@@ -4426,22 +4426,46 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     });
     $("btnCopyInside").addEventListener("click", quickCopy);
     $("btnDownloadInside").addEventListener("click", quickDownload);
-    // 把当前这份配置直接变成「整机模板」：名称/WiFi/配对码换成占位符，其余原样
+    // 把当前这份配置直接存成「整机模板」卡片（不进编辑器，之后点卡片再编辑）
     $("btnTplFromCode").addEventListener("click", () => {
         const y = buildYaml();
-        const tplYaml = y
+        let yml = y
             .replace(/(friendly_name:\s*)".*?"/, '$1"{{deviceName}}"')
             .replace(/(\n\s*ssid:\s*).*/, '$1"{{wifi_ssid}}"')
             .replace(/(\n\s*password:\s*)".*?"/, '$1"{{wifi_pass}}"')
             .replace(/(setup_code:\s*)".*?"/, '$1"{{hk_code}}"');
-        showTplEditor({
-            id: "tpl_" + Date.now().toString(36),
-            icon: "📦",
-            name: "我的整机",
-            sub: "",
-            vars: [],
-            yaml: tplYaml
+
+        // 和保存模板时同一套规则：写死的 GPIO 自动转成引脚参数
+        const hasCustom = /\{\{\s*[A-Za-z0-9_.-]+\s*\}\}/.test(
+            yml.replace(/\{\{\s*(deviceName|node_name|board|chip|flash|wifi_ssid|wifi_pass|hk_code)\s*\}\}/g, "")
+        );
+        const autoPins = {};
+        if (!hasCustom && /GPIO\d+/.test(yml)) {
+            yml = yml.replace(/GPIO(\d+)/g, (m, n) => {
+                const k = "pin_gpio" + n;
+                autoPins[k] = "GPIO" + n;
+                return "{{" + k + "}}";
+            });
+        }
+
+        // 重名自动加序号
+        let name = "我的整机";
+        for (let i = 2; state.cmTemplates.some(t => t.name === name); i++) name = "我的整机 " + i;
+
+        tplDraft = { id: "tpl_" + Date.now().toString(36), icon: "📦", name: name, sub: "整机模板", vars: [], yaml: yml };
+        scanTplVars();
+        (tplDraft.vars || []).forEach(v => {
+            if (autoPins[v.key]) { v.type = "pin"; if (!v.def) v.def = autoPins[v.key]; }
         });
+        const idx = state.cmTemplates.findIndex(t => t.id === tplDraft.id);
+        if (idx >= 0) state.cmTemplates[idx] = tplDraft; else state.cmTemplates.push(tplDraft);
+        saveCmTemplates();
+        pushTplCloud();
+        hideSheets();
+        renderTypes();
+        flashPlusCard("已存为「" + name + "」");
+        const grid = $("cmTypeGrid");
+        if (grid && grid.scrollIntoView) grid.scrollIntoView({ block: "center", behavior: "smooth" });
     });
     // 底部工具栏统一用 addEventListener：原来 btnCompile 同时挂了内联 onclick 和本监听，点一次会提交两次编译
     $("btnCode").addEventListener("click", openCode);
