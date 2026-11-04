@@ -333,6 +333,8 @@
 
     .btn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
     .btn-grid.tri { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .btn-grid.quad { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .btn-grid.quad .btn-sec { font-size: 13px; padding: 0 4px; }
     .btn-grid:last-child { margin-bottom: 0; }
     .btn-sec { width: 100%; height: 46px; border-radius: 0; background: var(--input-bg); border: 1px solid var(--line); color: var(--text-sub); font-size: 14px; font-weight: 600; display: flex; justify-content: center; align-items: center; transition: all .15s; }
     .btn-sec:active { background: var(--panel2); color: var(--text); border-color: var(--accent); }
@@ -815,9 +817,10 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     </div>
     <pre id="codeOut"></pre>
     <div class="sheet-foot">
-        <div class="btn-grid tri">
+        <div class="btn-grid quad">
             <button class="btn-sec" id="btnCopyInside">复制代码</button>
             <button class="btn-sec" id="btnDownloadInside">下载文件</button>
+            <button class="btn-sec" id="btnOtaInside">OTA 镜像</button>
             <button class="btn-sec" id="btnTplFromCode">＋整机模板</button>
         </div>
     </div>
@@ -3058,7 +3061,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             upd(p); return p;
         };
     }
-    async function unzipBin(blob, password) {
+    async function unzipBin(blob, password, want) {
         const u8 = new Uint8Array(await blob.arrayBuffer());
         const dv = new DataView(u8.buffer);
         let eocd = -1;
@@ -3085,7 +3088,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         if (!bins.length) throw new Error("压缩包里没有 .bin 文件");
         // 优先整包镜像：factory > firmware > 体积最大的那个
         const base = e => e.name.split("/").pop().toLowerCase();
-        const pick = bins.find(e => base(e) === "firmware.factory.bin") ||
+        const pick = (want && bins.find(e => base(e) === want)) ||
+            bins.find(e => base(e) === "firmware.factory.bin") ||
             bins.find(e => base(e) === "firmware.bin") ||
             bins.sort((a, b) => b.usize - a.usize)[0];
         const lho = pick.lho;
@@ -3193,6 +3197,33 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         a.remove();
     }
 
+    // 只走 OTA 的设备（没法接串口）需要的是 firmware.ota.bin，不是合并后的 factory.bin
+    async function downloadOta() {
+        if (!flashState.zipBlob) {
+            showToast("先点「编译」生成固件，再来取 OTA 镜像");
+            return;
+        }
+        try {
+            const head = new Uint8Array(await flashState.zipBlob.slice(0, 4).arrayBuffer());
+            if (!(head[0] === 0x50 && head[1] === 0x4B)) {
+                showToast("这次产物不是压缩包，取不到单独的 OTA 镜像");
+                return;
+            }
+            const ota = await unzipBin(flashState.zipBlob, null, "firmware.ota.bin");
+            const url = URL.createObjectURL(ota);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "firmware-ota.bin";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+            showToast("已下载 OTA 镜像：到设备网页的 OTA Update 上传");
+        } catch (e) {
+            showToast("OTA 镜像提取失败：" + ((e && e.message) || e), 4000);
+        }
+    }
+
     // 编译一次，返回可直接烧录的 bin（onTick 用于刷新进度文案）
     async function runCompile(onTick) {
         const y = buildYaml();
@@ -3246,15 +3277,17 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         if (onTick) onTick("正在取回固件…");
         const fr = await fetch(dl, { signal: sig });
         if (!fr.ok) throw new Error("固件下载失败 " + fr.status);
-        const blob = await artifactToBin(await fr.blob());
+        const rawBlob = await fr.blob();
+        const blob = await artifactToBin(rawBlob);
         if (!blob.size) throw new Error("固件为空");
-        return { blob: blob, yaml: y, dl: dl, at: Date.now() };
+        return { blob: blob, zip: rawBlob, yaml: y, dl: dl, at: Date.now() };
     }
 
     // 编译结果落到烧录卡片：之后点烧录不用再编译
     function setCompiled(res) {
         if (flashState.binUrl) URL.revokeObjectURL(flashState.binUrl);
         flashState.compiled = res;
+        flashState.zipBlob = res.zip || null;   // 保留原始 zip，OTA 镜像从这里取
         flashState.binUrl = URL.createObjectURL(res.blob);
         flashState.compiledYaml = res.yaml;
         flashState.err = "";
@@ -3381,7 +3414,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     // mode：auto=按当前配置编译后直烧（默认）· file=本地 .bin · url=固件直链
     const flashState = {
         mode: "auto", file: null, blobUrl: "", url: "",
-        compiled: null, binUrl: "", compiledYaml: "", err: "", erase: true
+        compiled: null, binUrl: "", zipBlob: null, compiledYaml: "", err: "", erase: true
     };
     /* 共用日志窗口：烧录日志（console 镜像）与串口监视器输出同窗。
        每行 = { k: "flash"|"serial"|"sys", s: 文本 }，烧录灰、串口亮、系统提示主题色 */
@@ -4426,6 +4459,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     });
     $("btnCopyInside").addEventListener("click", quickCopy);
     $("btnDownloadInside").addEventListener("click", quickDownload);
+    $("btnOtaInside").addEventListener("click", downloadOta);
     // 把当前这份配置直接存成「整机模板」卡片（不进编辑器，之后点卡片再编辑）
     $("btnTplFromCode").addEventListener("click", () => {
         const y = buildYaml();
