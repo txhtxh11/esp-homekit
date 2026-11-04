@@ -324,7 +324,10 @@
     .src-btn.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
     /* 巴法云主题卡：卡片本身就是复制按钮，点一下变「已复制」 */
-    .bm-card .name { font-family: ui-monospace, monospace; font-size: 12.5px; letter-spacing: -.2px; }
+    .bm-card { position: relative; }
+    .bm-card .name { font-family: ui-monospace, monospace; font-size: 12.5px; letter-spacing: -.2px; padding-right: 22px; }
+    .bm-del { position: absolute; top: 6px; right: 8px; font-size: 12px; line-height: 1; color: var(--muted); padding: 4px; }
+    .bm-del:active { color: var(--accent); }
     .bm-card .sub { font-family: inherit; }
 
     /* 偶数张卡的分组固定两列，宽屏也不留半行空缺（日志 4 张、整机 2 张） */
@@ -2176,13 +2179,14 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     function bemfaEntries() {
         const out = [];
         state.devices.forEach(d => {
+            if (d.io && d.io.bemfa === false) return;   // 手动删掉的项
             if (d.type === "cm_w1") {
-                out.push({ topic: bemfaTopic("master", "006"), name: d.name + " 总控", kind: "switch" });
-                out.push({ topic: bemfaTopic("slave", "006"), name: d.name + " 分控", kind: "switch" });
+                out.push({ topic: bemfaTopic("master", "006"), name: d.name + " 总控", kind: "switch", dev: d });
+                out.push({ topic: bemfaTopic("slave", "006"), name: d.name + " 分控", kind: "switch", dev: d });
             } else if (TYPES[d.type]) {
-                if (d.type === "relay") out.push({ topic: bemfaTopic(d.uid, "006"), name: d.name, kind: "switch" });
-                else if (d.type === "dht") out.push({ topic: bemfaTopic(d.uid, "004"), name: d.name, kind: "sensor" });
-                else if (d.type === "bh1750") out.push({ topic: bemfaTopic(d.uid, "004"), name: d.name, kind: "sensor" });
+                if (d.type === "relay") out.push({ topic: bemfaTopic(d.uid, "006"), name: d.name, kind: "switch", dev: d });
+                else if (d.type === "dht") out.push({ topic: bemfaTopic(d.uid, "004"), name: d.name, kind: "sensor", dev: d });
+                else if (d.type === "bh1750") out.push({ topic: bemfaTopic(d.uid, "004"), name: d.name, kind: "sensor", dev: d });
             }
         });
         return out;
@@ -2229,6 +2233,21 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             b.className = "card board bm-card";
             b.innerHTML = '<span class="name">' + esc(e.topic) + '</span>' +
                 '<span class="sub">' + esc(e.name + " · " + (e.kind === "switch" ? "开关" : "传感器")) + '</span>';
+            // 右上角 ✕：把这个主题（连同生成的 mqtt 代码）去掉
+            if (e.dev && e.topic !== bemfaTopic("master", "006") && e.topic !== bemfaTopic("slave", "006")) {
+                const del = document.createElement("span");
+                del.className = "bm-del";
+                del.textContent = "✕";
+                del.setAttribute("aria-label", "删除这个主题");
+                del.addEventListener("click", ev => {
+                    ev.stopPropagation();
+                    if (!e.dev.io) e.dev.io = {};
+                    e.dev.io.bemfa = false;
+                    scheduleSave();
+                    renderBemfa();
+                });
+                b.appendChild(del);
+            }
             b.addEventListener("click", async () => {
                 const ok = await copyText(e.topic);
                 const sub = b.querySelector(".sub");
@@ -2239,6 +2258,22 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             });
             listEl.appendChild(b);
         });
+        // 被删掉的设备：给一张恢复卡，随时能加回来
+        const removed = state.devices.filter(d => d.io && d.io.bemfa === false);
+        if (removed.length) {
+            const back = document.createElement("button");
+            back.type = "button";
+            back.className = "card plus";
+            back.style.gridColumn = "1 / -1";
+            back.innerHTML = '<span class="ico">↺</span><span class="name">恢复 ' + removed.length + ' 个主题</span>' +
+                '<span class="sub">' + esc(removed.map(d => d.name).join("、")) + '</span>';
+            back.addEventListener("click", () => {
+                removed.forEach(d => { d.io.bemfa = true; });
+                scheduleSave();
+                renderBemfa();
+            });
+            listEl.appendChild(back);
+        }
         const all = document.createElement("button");
         all.type = "button";
         all.className = "card plus";
@@ -2924,10 +2959,11 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
            <topic_prefix>/switch/<id>/state，两者对不上。所以不用内置实体话题：
            on_message 订阅裸话题执行动作，mqtt.publish 往 <topic>/set 主动回传状态/数值。 */
         const bemfaOn = !!state.bemfa.on;
-        const bmSw = bemfaOn ? relays.map(d => ({ d: d, t: bemfaTopic(d.uid, "006") })) : [];
+        const bmOff = d => !!(d.io && d.io.bemfa === false);   // 巴法云里被删掉的项
+        const bmSw = bemfaOn ? relays.filter(d => !bmOff(d)).map(d => ({ d: d, t: bemfaTopic(d.uid, "006") })) : [];
         const bmSens = bemfaOn
-            ? dhts.map(d => ({ d: d, t: bemfaTopic(d.uid, "004"), kind: "dht" }))
-                .concat(bh1750s.map(d => ({ d: d, t: bemfaTopic(d.uid, "004"), kind: "lux" })))
+            ? dhts.filter(d => !bmOff(d)).map(d => ({ d: d, t: bemfaTopic(d.uid, "004"), kind: "dht" }))
+                .concat(bh1750s.filter(d => !bmOff(d)).map(d => ({ d: d, t: bemfaTopic(d.uid, "004"), kind: "lux" })))
             : [];
         if (bemfaOn) {
             const bmUid = state.bemfa.uid || "在这里填巴法云私钥UID";
@@ -3052,7 +3088,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             const evs = {};
             const addEv = (name, line) => { (evs[name] = evs[name] || []).push(line); };
             dev.actions.forEach(act => addEv(act.event, "- " + (OP_YAML[act.op] || "switch.toggle") + ": " + act.target));
-            if (bemfaOn) {
+            if (bemfaOn && !(dev.io && dev.io.bemfa === false)) {
                 const bt = bemfaTopic(dev.uid, "006");
                 addEv("on_turn_on", "- mqtt.publish:");
                 addEv("on_turn_on", "    topic: " + bt + "/set");
