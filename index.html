@@ -658,6 +658,20 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         </section>
 
         <section>
+            <div class="section-title"><h2>设备名</h2></div>
+            <div class="pair-2">
+                <label class="field-card">
+                    <span class="field-label">设备名（node_name）</span>
+                    <input class="form-input field-input" id="nodeNameInput" placeholder="留空自动加 MAC 后缀" spellcheck="false">
+                </label>
+                <label class="field-card">
+                    <span class="field-label">显示名（friendly_name）</span>
+                    <input class="form-input field-input" id="friendlyInput" placeholder="HomeKit 里显示的名字" spellcheck="false">
+                </label>
+            </div>
+        </section>
+
+        <section>
             <div class="section-title"><h2>WiFi 设置</h2></div>
             <div class="triple">
                 <input class="pair-input" id="wifiSsid" placeholder="WiFi名称·留空=热点配网" aria-label="WiFi 名称">
@@ -970,6 +984,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         flash: { esp8266: "4MB", esp32: "4MB" },
         customFlash: { esp8266: "", esp32: "" },
         wifi: { ssid: "", pass: "" },
+        nodeName: "",        // esphome.name：留空 = esp_homekit_device + MAC 后缀
+        friendlyName: "",    // esphome.friendly_name：留空 = ESP HomeKit 设备
         hkCode: "111-22-333",
         // 巴法云：on=生成 mqtt 段（安卓「巴法」App / 小程序直接远程控制，不依赖 HomeKit）
         bemfa: { on: false, uid: "" },
@@ -990,6 +1006,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 board: state.board, customBoard: state.customBoard,
                 flash: state.flash, customFlash: state.customFlash,
                 wifi: state.wifi, hkCode: state.hkCode,
+                nodeName: state.nodeName, friendlyName: state.friendlyName,
                 bemfa: state.bemfa, logLevel: state.logLevel,
                 seq: state.seq,
                 devices: state.devices.map(d => ({
@@ -1017,6 +1034,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 if (s[k] && typeof s[k] === "object") Object.assign(state[k], s[k]);
             });
             if (typeof s.hkCode === "string" && s.hkCode) state.hkCode = s.hkCode;
+            if (typeof s.nodeName === "string") state.nodeName = s.nodeName;
+            if (typeof s.friendlyName === "string") state.friendlyName = s.friendlyName;
             if (typeof s.logLevel === "string" && s.logLevel) state.logLevel = s.logLevel;
             if (s.seq && typeof s.seq === "object") state.seq = s.seq;
             state.devices = s.devices.filter(d => d && d.uid && d.type);
@@ -2680,9 +2699,12 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         }
         G.push("");
         G.push("esphome:");
-        G.push('  name: "esp_homekit_device"');
-        G.push('  friendly_name: "ESP HomeKit 设备"');
-        G.push("  name_add_mac_suffix: true");
+        // 设备名：填了就用填的（不再自动加 MAC 后缀），没填沿用默认+MAC 后缀
+        const nodeName = (state.nodeName || "").trim();
+        const friendlyName = (state.friendlyName || "").trim();
+        G.push('  name: "' + yamlStr(nodeName || "esp_homekit_device") + '"');
+        G.push('  friendly_name: "' + yamlStr(friendlyName || "ESP HomeKit 设备") + '"');
+        if (!nodeName) G.push("  name_add_mac_suffix: true");
         if (!isEsp32) {
             G.push("  on_boot:");
             G.push("    priority: 800");
@@ -3305,7 +3327,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         const y = yamlForUse();
         const cmNow = cmDev();
         const cmNowDef = cmNow ? cmDef(cmNow.type) : null;
-        const deviceName = cmNowDef ? (cmNowDef.node || tplSlug(cmNow.name)) : "esp_homekit_device";
+        const deviceName = (state.nodeName || "").trim() ||
+            (cmNowDef ? (cmNowDef.node || tplSlug(cmNow.name)) : "esp_homekit_device");
         const board = cmNowDef ? (cmNowDef.builtin ? "esp12e" : currentBoardId()) : currentBoardId();
         const sig = compileAbort.signal;
         const enc = btoa(unescape(encodeURIComponent(y)));
@@ -4605,6 +4628,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     // 板型卡片 / WiFi / 配对码 控件绑定
     $("customBoardInput").addEventListener("input", e => { state.customBoard[state.chip] = e.target.value.trim(); scheduleSave(); });
     $("customFlashInput").addEventListener("input", e => { state.customFlash[state.chip] = e.target.value.trim(); scheduleSave(); });
+    $("nodeNameInput").addEventListener("input", e => { state.nodeName = e.target.value.trim(); scheduleSave(); });
+    $("friendlyInput").addEventListener("input", e => { state.friendlyName = e.target.value; scheduleSave(); });
     $("wifiSsid").addEventListener("input", e => { state.wifi.ssid = e.target.value.trim(); scheduleSave(); });
     $("wifiPass").addEventListener("input", e => { state.wifi.pass = e.target.value; scheduleSave(); });
     // 「扫描」：用摄像头扫手机/路由器上分享 WiFi 的二维码（WIFI:T:WPA;S:名称;P:密码;;），自动填进上面两格
@@ -4641,6 +4666,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
 
     // 恢复上次的配置：芯片/板型/FLASH/WiFi/配对码/设备卡片全部还原，刷新不用重配
     if (loadState()) {
+        $("nodeNameInput").value = state.nodeName || "";
+        $("friendlyInput").value = state.friendlyName || "";
         $("wifiSsid").value = state.wifi.ssid || "";
         $("wifiPass").value = state.wifi.pass || "";
         $("hkCodeInput").value = state.hkCode || "111-22-333";
