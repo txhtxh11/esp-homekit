@@ -3946,37 +3946,6 @@ function parseTplTopics(yaml) {
             showToast("取不到 " + want);
         }
     }
-    // 命令行 OTA：把 ota.bin 直接 POST 到设备的 /update
-    async function otaPushByIp(ipRaw) {
-        const ip = String(ipRaw || "").trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
-        if (!ip) { showToast("先填设备 IP"); return; }
-        // /update 是设备网页的接口：Web 模块关掉时根本没有这个地址
-        if (!feat("web")) { showToast("固件没开 Web 网页，设备没有 /update 接口，OTA 推送用不了", 5000); return; }
-        if (!flashState.zipBlob) { showToast("先编译，再来推送"); return; }
-        let blob;
-        try { blob = await binBlob("ota"); }
-        catch (e) { showToast("这次产物里没有 firmware.ota.bin"); return; }
-        if (flashState.otaTooBig) {
-            showToast("固件 " + fmtSize(blob.size) + " 超过 OTA 上限，推上去也会失败", 5000);
-            return;
-        }
-        const fd = new FormData();
-        fd.append("update", blob, "firmware.ota.bin");
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "http://" + ip + "/update");
-        xhr.upload.onprogress = e => {
-            if (e.lengthComputable) setCompileMsg("OTA 推送 " + Math.round(e.loaded / e.total * 100) + "%");
-        };
-        xhr.onload = () => {
-            const ok = xhr.responseText && /Successful|OK/i.test(xhr.responseText);
-            setCompileMsg(ok ? "OTA 完成，设备重启中…" : "OTA 被设备拒绝：" + (xhr.responseText || "无响应").slice(0, 40));
-        };
-        xhr.onerror = () => {
-            setCompileMsg("OTA 推送失败：浏览器拦截或被设备拒绝（HTTPS 页面无法访问 http 设备）");
-        };
-        setCompileMsg("OTA 推送中…");
-        xhr.send(fd);
-    }
 
     // 只走 OTA 的设备（没法接串口）需要的是 firmware.ota.bin，不是合并后的 factory.bin
     async function downloadOta() {
@@ -4501,27 +4470,6 @@ function parseTplTopics(yaml) {
         });
         pick.appendChild(srcRow);
 
-        // OTA 推送：填设备 IP，直接把 firmware.ota.bin POST 到 /update
-        const otaRow = document.createElement("div");
-        otaRow.className = "pair-2";
-        otaRow.style.padding = "0 12px 10px";
-        const ipInp = document.createElement("input");
-        ipInp.className = "pair-input";
-        ipInp.style.height = "60px";
-        ipInp.style.fontSize = "13px";
-        ipInp.id = "otaIp";
-        ipInp.placeholder = "设备 IP · 192.168.50.19";
-        ipInp.value = localStorage.getItem("eh-ota-ip") || "";
-        ipInp.addEventListener("change", () => localStorage.setItem("eh-ota-ip", ipInp.value.trim()));
-        const otaBtn = document.createElement("button");
-        otaBtn.type = "button";
-        otaBtn.className = "pair-btn";
-        otaBtn.style.height = "60px";
-        otaBtn.textContent = "OTA 推送";
-        otaBtn.addEventListener("click", () => otaPushByIp(ipInp.value));
-        otaRow.appendChild(ipInp);
-        otaRow.appendChild(otaBtn);
-
         // 固件状态、地址、下载、清空、开始烧录都在下面三张并排卡片里，不再单独占一行
         if (compileAbort) return;
         $("csRow").hidden = true;
@@ -4646,11 +4594,10 @@ function parseTplTopics(yaml) {
             if (bins) { pick.appendChild(bins); paintBinPick(); }
 
             const acts = document.createElement("div");
-            acts.className = "triple";
+            acts.className = "pair-2";
             acts.style.padding = "0 12px 10px";
             [["⬇", "下载", () => downloadCompiled()],
-             ["⚡", "烧录", () => flashNow()],
-             ["📡", "OTA", () => { flashState.otaOpen = !flashState.otaOpen; renderFlashPick(); }]].forEach(([ico, label, fn]) => {
+             ["⚡", "烧录", () => flashNow()]].forEach(([ico, label, fn]) => {
                 const b = document.createElement("button");
                 b.type = "button";
                 b.className = "pair-btn" + (label === "OTA" && flashState.otaOpen ? " on" : "");
@@ -4659,7 +4606,6 @@ function parseTplTopics(yaml) {
                 acts.appendChild(b);
             });
             pick.appendChild(acts);
-            if (flashState.otaOpen) pick.appendChild(otaRow);
         }
     }
 
