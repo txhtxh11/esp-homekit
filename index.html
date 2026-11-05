@@ -1571,7 +1571,10 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             // 输出/信号方向与 WiFi 指示灯：反向输出开关关闭=常规、打开=反向；
             // 门磁/人体/按键类信号默认低电平触发（保持反向）
             dev.io = { inverted: t.kind === "binary", boot: "off", statusLed: false };
-            if (type === "button") { dev.io.longReset = false; dev.io.longResetSec = 5; }
+            if (type === "button") {
+                dev.io.longReset = true; dev.io.longResetSec = 5;    // 长按重置配对（默认开）
+                dev.io.factoryReset = false; dev.io.factoryResetSec = 10;  // 长按恢复出厂（默认关）
+            }
             // 默认引脚若已被占用（如再加一个继电器），自动挑一个空闲脚
             autoAssignPins(dev);
         }
@@ -2051,21 +2054,38 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 v => { dev.io.inverted = v; });
             ioSection.appendChild(invRow);
             if (dev.type === "button") {
-                // 物理按键专属：长按自定义时长重置 HomeKit 配对
+                // 物理按键专属：两档长按
                 const frRow = document.createElement("div"); frRow.className = "form-row";
-                frRow.innerHTML = '<label class="form-label">长按恢复出厂</label>';
-                toggleCards(frRow, !!dev.io.longReset, { offSub: "不启用", onSub: "长按重置配对" }, v => {
+                frRow.innerHTML = '<label class="form-label">长按重置配对</label>';
+                toggleCards(frRow, !!dev.io.longReset, { offSub: "不启用", onSub: "重置 HomeKit" }, v => {
                     dev.io.longReset = v;
-                    renderDetailGeneric(dev);   // 需要在下方插入秒数输入框
+                    renderDetailGeneric(dev);
                 });
                 ioSection.appendChild(frRow);
                 if (dev.io.longReset) {
                     const secRow = document.createElement("div"); secRow.className = "form-row";
-                    secRow.innerHTML = '<label class="form-label">长按时长（秒）</label><input class="form-input" type="number" id="frSec" min="1" max="60" step="1" value="' + (parseInt(dev.io.longResetSec, 10) || 5) + '">';
+                    secRow.innerHTML = '<label class="form-label">重置配对时长（秒）</label><input class="form-input" type="number" id="frSec" min="1" max="60" step="1" value="' + (parseInt(dev.io.longResetSec, 10) || 5) + '">';
                     ioSection.appendChild(secRow);
                     secRow.querySelector("#frSec").addEventListener("input", e => {
                         const v = parseInt(e.target.value, 10);
                         dev.io.longResetSec = isNaN(v) ? 5 : Math.min(Math.max(v, 1), 60);
+                    });
+                }
+                // 第二档：长按恢复出厂（清 NVS + WiFi 凭据，默认关）
+                const fwRow = document.createElement("div"); fwRow.className = "form-row";
+                fwRow.innerHTML = '<label class="form-label">长按恢复出厂</label>';
+                toggleCards(fwRow, !!dev.io.factoryReset, { offSub: "不启用", onSub: "清空并重启" }, v => {
+                    dev.io.factoryReset = v;
+                    renderDetailGeneric(dev);
+                });
+                ioSection.appendChild(fwRow);
+                if (dev.io.factoryReset) {
+                    const fwSec = document.createElement("div"); fwSec.className = "form-row";
+                    fwSec.innerHTML = '<label class="form-label">恢复出厂时长（秒）</label><input class="form-input" type="number" id="fwSec" min="1" max="60" step="1" value="' + (parseInt(dev.io.factoryResetSec, 10) || 10) + '">';
+                    ioSection.appendChild(fwSec);
+                    fwSec.querySelector("#fwSec").addEventListener("input", e => {
+                        const v = parseInt(e.target.value, 10);
+                        dev.io.factoryResetSec = isNaN(v) ? 10 : Math.min(Math.max(v, 1), 60);
                     });
                 }
             }
@@ -3410,14 +3430,33 @@ function parseTplTopics(yaml) {
                     multiItems.push({ times: ["- ON for at most 0.4s", "- OFF for at most 0.4s", "- ON for at most 0.4s", "- OFF for at least 0.2s"], lines: ["- " + opFor(act.op) + ": " + act.target] });
                 }
             });
-            // 长按：直接调组件的 reset_storage 清空 HomeKit 配对
-            if (dev.type === "button" && dev.io && dev.io.longReset) {
-                const sec = Math.min(Math.max(parseInt(dev.io.longResetSec, 10) || 5, 1), 60);
+            // 长按两档：5s 重置配对 / 10s 恢复出厂
+            const hkLong = !!(dev.io && dev.io.longReset);
+            const facLong = !!(dev.io && dev.io.factoryReset);
+            const hkSec = Math.min(Math.max(parseInt(dev.io && dev.io.longResetSec, 10) || 5, 1), 60);
+            const facSec = Math.min(Math.max(parseInt(dev.io && dev.io.factoryResetSec, 10) || 10, 1), 60);
+            const hkLines = state.chip === "esp8266"
+                ? ["- homekit.reset_storage:", "    id: my_hk"]
+                : ["- lambda: 'ESP.restart();'"];
+            if (hkLong && facLong) {
+                // 两个都要：出厂到点即触发；配对必须「按满 N 秒后松手」才触发，避免抢先
                 multiItems.push({
-                    times: ["- ON for at least " + sec + "s"],
-                    lines: state.chip === "esp8266"
-                        ? ["- homekit.reset_storage:", "    id: my_hk"]
-                        : ["- lambda: 'ESP.restart();'"]
+                    times: ["- ON for at least " + facSec + "s"],
+                    lines: ["- switch.turn_on: wipe_all"]
+                });
+                multiItems.push({
+                    times: ["- ON for at least " + hkSec + "s", "- OFF for at least 0.1s"],
+                    lines: hkLines
+                });
+            } else if (facLong) {
+                multiItems.push({
+                    times: ["- ON for at least " + facSec + "s"],
+                    lines: ["- switch.turn_on: wipe_all"]
+                });
+            } else if (hkLong) {
+                multiItems.push({
+                    times: ["- ON for at least " + hkSec + "s"],
+                    lines: hkLines
                 });
             }
             if (multiItems.length) {
@@ -3461,6 +3500,16 @@ function parseTplTopics(yaml) {
             });
             switchBlocks.push(lines);
         });
+        // 按键启用「长按恢复出厂」时补一个隐藏的 factory_reset 开关
+        const needWipe = state.devices.some(d => d.type === "button" && d.io && d.io.factoryReset);
+        if (needWipe) {
+            switchBlocks.push([
+                "  - platform: factory_reset",
+                "    id: wipe_all",
+                '    name: "恢复出厂设置"',
+                "    internal: true"
+            ]);
+        }
         if (switchBlocks.length) {
             G.push("switch:");
             switchBlocks.forEach(lines => { lines.forEach(l => G.push(l)); G.push(""); });
