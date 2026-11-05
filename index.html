@@ -2891,9 +2891,10 @@ function parseTplTopics(yaml) {
             L.push("external_components:");
             L.push("  - source:");
             L.push("      type: git");
-            L.push("      url: https://github.com/txhtxh11/cmpower");
-            L.push("      refresh: 0s          # 每次编译都拉最新代码，避免用到缓存的旧组件");
+            L.push("      url: https://github.com/txhtxh11/homekit");
+            L.push("      path: homekit-esp8266");
             L.push("    components: [homekit, sy7t609]");
+            L.push("    refresh: 0s            # 每次编译都拉最新代码，避免用到缓存的旧组件");
             L.push("");
             L.push("wifi:");
             L.push("  min_auth_mode: WPA");
@@ -2914,13 +2915,8 @@ function parseTplTopics(yaml) {
             L.push("logger:");
             L.push("  level: " + state.logLevel);
             L.push("");
-            L.push("web_server:");
-            L.push("  port: 80");
-            L.push("  version: 1");
-            L.push("");
-            L.push("api:");
-            L.push("  reboot_timeout: 0s");
-            L.push("");
+            // 内存提示：CMPOWER 的 HAP + MQTT 已吃满堆，web_server / api 会让
+            // HomeKit 的 mDNS 注册或 MQTT 握手失败，所以默认不生成这两个组件。
             L.push("ota:");
             L.push("  - platform: esphome");
             L.push("");
@@ -2960,7 +2956,7 @@ function parseTplTopics(yaml) {
                 L.push("");
             }
             L.push("time:");
-            L.push("  - platform: homeassistant");
+            L.push("  - platform: sntp");
             L.push("    id: id_homeassistant_time");
             L.push('    timezone: "Asia/Shanghai"');
             L.push("");
