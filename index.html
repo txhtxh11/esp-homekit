@@ -815,6 +815,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 <button class="cs-btn" id="eraseToggle" type="button">擦除</button>
                 <button class="cs-btn" id="monBaudBtn" type="button">115200</button>
                 <button class="cs-btn" id="monConnect">连接</button>
+            <button class="cs-btn" id="netLogBtn" type="button">在线日志</button>
                 <button class="cs-btn" id="monClear">清屏</button>
             </div>
             <div class="mon-bauds" id="monBaudOpts" hidden></div>
@@ -1291,7 +1292,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         ["api", "API", "接入 Home Assistant"],
         ["portal", "配网热点", "断网自动开热点"],
         ["ota", "OTA", "空中升级"],
-        ["restore", "状态记忆", "断电记住开关"]
+        ["restore", "状态记忆", "断电记住开关"],
+        ["weblog", "网页日志", "在线看设备输出"]
     ];
     let featOpen = false;
     function renderFeatures() {
@@ -3249,6 +3251,7 @@ function parseTplTopics(yaml) {
             G.push("web_server:");
             G.push("  port: 80");
             G.push("  version: 1");
+            if (feat("weblog")) G.push("  log: true");   // 网页里能直接看设备日志
             G.push("");
         }
         G.push("external_components:");
@@ -4079,6 +4082,48 @@ function parseTplTopics(yaml) {
     function flashLog(s) {
         pushLog("flash", "[" + new Date().toTimeString().slice(0, 8) + "] " + s);
     }
+    // 在线日志：直接读设备网页的 /events 事件流，复用下面那格日志输出
+    let netLogSrc = null;
+    function netLogStop() {
+        if (netLogSrc) { try { netLogSrc.close(); } catch (e) { } netLogSrc = null; }
+        const b = $("netLogBtn");
+        if (b) b.classList.remove("on");
+    }
+    function netLogToggle() {
+        const btn = $("netLogBtn");
+        if (netLogSrc) { netLogStop(); pushLog("sys", "在线日志已断开"); return; }
+        const raw = (($("otaIp") && $("otaIp").value) || localStorage.getItem("eh-ota-ip") || "").trim();
+        const ip = raw.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+        if (!ip) { showToast("先在烧录页填设备 IP"); return; }
+        $("monBox").hidden = false;
+        $("flashLog").hidden = false;
+        pushLog("sys", "连接 http://" + ip + "/events …");
+        try {
+            netLogSrc = new EventSource("http://" + ip + "/events");
+            const onLog = ev => {
+                let txt = ev.data;
+                try {
+                    const d = JSON.parse(ev.data);
+                    txt = d.message || d.text || d.msg || ev.data;
+                } catch (e) { }
+                if (txt) pushLog("serial", String(txt).replace(/\s+$/, ""));
+            };
+            netLogSrc.addEventListener("log", onLog);
+            netLogSrc.onmessage = onLog;
+            netLogSrc.onopen = () => {
+                btn.classList.add("on");
+                pushLog("sys", "已连上设备日志流");
+            };
+            netLogSrc.onerror = () => {
+                pushLog("sys", "日志流中断：设备不可达 / https 页面访问 http 被拦 / 固件没开 web_server.log");
+                netLogStop();
+            };
+        } catch (e) {
+            pushLog("sys", "建立日志流失败：" + ((e && e.message) || e));
+            netLogStop();
+        }
+    }
+
     function renderFlashLog() {
         const el = $("flashLog");
         if (!el) return;
@@ -5242,6 +5287,8 @@ function parseTplTopics(yaml) {
     }
 
     // 巴法云控件
+    $("netLogBtn").addEventListener("click", netLogToggle);
+
     $("bemfaUid").addEventListener("input", e => { state.bemfa.uid = e.target.value.trim(); bemfaSave(); scheduleSave(); });
 
     bemfaLoad();
