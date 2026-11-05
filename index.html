@@ -1375,6 +1375,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             }]];
             if (tpl) {
                 items.push(["⇩", "反填", () => { hideSheets(); tplReverseApply(def); }]);
+                items.push(["⇧", "回存", () => { hideSheets(); tplSaveBack(tpl); }]);
                 items.push(["✎", "编辑", () => { tplBackFn = null; hideSheets(); showTplEditor(tpl); }]);
                 items.push(["🗑", "删除", () => { hideSheets(); deleteTpl(tpl.id); }]);
             }
@@ -2568,6 +2569,20 @@ function parseTplTopics(yaml) {
             r.sens.push({ type: plat[1], name: name || plat[1], pin: tplPin(text) });
         });
         return r;
+    }
+    // 回存：把当前卡片生成的 YAML 写回这个整机模板
+    function tplSaveBack(tpl) {
+        if (state.devices.some(d => isCmType(d.type))) {
+            showToast("当前有整机模板设备，先在设备里删掉它，卡片才是通用模式");
+            return;
+        }
+        const y = buildYaml();
+        if (!y || y.length < 40) { showToast("没有可回存的内容"); return; }
+        tpl.yaml = y;
+        saveCmTemplates();
+        scheduleSave();
+        if (typeof pushTplCloud === "function") pushTplCloud();
+        showToast("已回存到模板「" + tpl.name + "」");
     }
     function tplReverseApply(def) {
         let r;
@@ -5003,6 +5018,7 @@ function parseTplTopics(yaml) {
         addDevice: addDevice,
         buildYaml: buildYaml,
         reverseTpl: tplReverseApply,
+        saveBackTpl: tplSaveBack,
         getState: () => state,
         setChip: chip => { state.chip = chip; },
         randomHkCode: randomHkCode,
