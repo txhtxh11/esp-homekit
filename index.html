@@ -324,6 +324,19 @@
     .src-btn.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
     /* 巴法云主题卡：卡片本身就是复制按钮，点一下变「已复制」 */
+    /* 编译完成后的三个 bin 下载卡 */
+    .cs-bins { display: flex; gap: 8px; padding: 0 12px 10px; }
+    .cs-bin { flex: 1 1 0; height: 34px; border-radius: 9px; border: 1px solid var(--line);
+        background: var(--panel2); color: var(--fg); font-size: 12px; font-weight: 600;
+        font-family: inherit; letter-spacing: .3px; }
+    .cs-bin:active { background: var(--panel3, #333); }
+    /* 烧录来源行的 OTA 推送 */
+    .ota-push { display: flex; gap: 8px; padding: 0 12px 10px; }
+    .ota-push input { flex: 1 1 0; height: 36px; border-radius: 9px; border: 1px solid var(--line);
+        background: var(--panel2); color: var(--fg); padding: 0 12px; font-size: 13px; font-family: inherit; }
+    .ota-push button { flex: 0 0 auto; padding: 0 14px; height: 36px; border-radius: 9px;
+        border: 1px solid var(--accent); background: transparent; color: var(--accent);
+        font-size: 13px; font-weight: 700; font-family: inherit; }
     .bm-card { position: relative; }
     .bm-card .name { font-family: ui-monospace, monospace; font-size: 12.5px; letter-spacing: -.2px; padding-right: 22px; }
     .bm-del { position: absolute; top: 6px; right: 8px; font-size: 12px; line-height: 1; color: var(--muted); padding: 4px; }
@@ -687,6 +700,11 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             </div>
         </section>
 
+        <section id="featSection">
+            <div class="section-title"><h2>功能模块</h2><span>按需裁剪省内存</span></div>
+            <div class="grid" id="featGrid"></div>
+        </section>
+
         <section id="bemfaSection">
             <div class="section-title"><h2>巴法云</h2><span id="bemfaHint">手机远程</span></div>
             <div id="bemfaToggle"></div>
@@ -783,6 +801,11 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             <button class="cs-info" id="compileMsg" type="button"></button>
             <button class="cs-act" id="compileCancel" type="button">取消</button>
         </div>
+        <div class="cs-bins" id="csBins" hidden>
+            <button class="cs-bin" type="button" data-kind="factory">factory</button>
+            <button class="cs-bin" type="button" data-kind="ota">ota</button>
+            <button class="cs-bin" type="button" data-kind="bin">bin</button>
+        </div>
         <div id="flashPick" hidden></div>
         <!-- 烧录进度面板：连接 / 擦除 / 写入 / 完成 都在这里，不弹任何原生窗口 -->
         <div id="dlgMirror" hidden></div>
@@ -838,10 +861,9 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     </div>
     <textarea id="codeOut" spellcheck="false" wrap="off"></textarea>
     <div class="sheet-foot">
-        <div class="btn-grid quad">
+        <div class="btn-grid tri">
             <button class="btn-sec" id="btnCopyInside">复制代码</button>
             <button class="btn-sec" id="btnDownloadInside">下载文件</button>
-            <button class="btn-sec" id="btnOtaInside">OTA 镜像</button>
             <button class="btn-sec" id="btnTplFromCode">＋整机模板</button>
         </div>
     </div>
@@ -988,6 +1010,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         flash: { esp8266: "4MB", esp32: "4MB" },
         customFlash: { esp8266: "", esp32: "" },
         wifi: { ssid: "", pass: "" },
+        features: { web: true, api: true, portal: true, ota: true, restore: true },
         nodeName: "",        // esphome.name：留空 = esp_homekit_device + MAC 后缀
         friendlyName: "",    // esphome.friendly_name：留空 = ESP HomeKit 设备
         hkCode: "111-22-333",
@@ -1011,6 +1034,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 flash: state.flash, customFlash: state.customFlash,
                 wifi: state.wifi, hkCode: state.hkCode,
                 nodeName: state.nodeName, friendlyName: state.friendlyName,
+                features: state.features,
                 bemfa: state.bemfa, logLevel: state.logLevel,
                 seq: state.seq,
                 devices: state.devices.map(d => ({
@@ -1038,6 +1062,11 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 if (s[k] && typeof s[k] === "object") Object.assign(state[k], s[k]);
             });
             if (typeof s.hkCode === "string" && s.hkCode) state.hkCode = s.hkCode;
+            if (s.features && typeof s.features === "object") {
+                ["web", "api", "portal", "ota", "restore"].forEach(k => {
+                    if (typeof s.features[k] === "boolean") state.features[k] = s.features[k];
+                });
+            }
             if (typeof s.nodeName === "string") state.nodeName = s.nodeName;
             if (typeof s.friendlyName === "string") state.friendlyName = s.friendlyName;
             if (typeof s.logLevel === "string" && s.logLevel) state.logLevel = s.logLevel;
@@ -1255,6 +1284,45 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     }
 
     // FLASH 大小卡片：选定即高亮，随板型联动刷新；末位「自定义」只填 MB 数
+    // 功能模块开关：某个模块关掉后，生成的 YAML 里对应段落直接不出现
+    function feat(k) { return !(state.features && state.features[k] === false); }
+    const FEATURE_LIST = [
+        ["web", "Web 网页", "设备网页面板"],
+        ["api", "API", "接入 Home Assistant"],
+        ["portal", "配网热点", "断网自动开热点"],
+        ["ota", "OTA", "空中升级"],
+        ["restore", "状态记忆", "断电记住开关"]
+    ];
+    let featOpen = false;
+    function renderFeatures() {
+        const box = $("featGrid");
+        if (!box) return;
+        box.innerHTML = "";
+        const on = FEATURE_LIST.filter(([k]) => feat(k)).length;
+        // 标题卡：点一下展开 / 收起下面的功能开关
+        const head = document.createElement("button");
+        head.type = "button";
+        head.className = "card board";
+        head.style.gridColumn = "1 / -1";
+        head.innerHTML = '<span class="name">功能模块</span><span class="sub">已开 ' + on + '/' + FEATURE_LIST.length +
+            (featOpen ? " · 收起" : " · 展开") + '</span>';
+        head.addEventListener("click", () => { featOpen = !featOpen; renderFeatures(); });
+        box.appendChild(head);
+        if (!featOpen) return;
+        FEATURE_LIST.forEach(([k, name, sub]) => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "card board" + (feat(k) ? " on" : "");
+            b.innerHTML = '<span class="name">' + name + '</span><span class="sub">' + (feat(k) ? "开 · " + sub : "关") + '</span>';
+            b.addEventListener("click", () => {
+                state.features[k] = !feat(k);
+                scheduleSave();
+                renderFeatures();
+            });
+            box.appendChild(b);
+        });
+    }
+
     function renderFlash(locked) {
         const el = $("flashGrid"); el.innerHTML = "";
         const cur = state.flash[state.chip] || "4MB";
@@ -1321,7 +1389,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         state.devices.forEach(d => { if (!isCmType(d.type)) d.pinOverrides = {}; });
         // 换芯片后引脚表变了，重新按顺序分配，避免回落到相同默认脚
         state.devices.forEach(d => { if (!isCmType(d.type)) autoAssignPins(d); });
-        renderChips(); renderTypes(); renderDevices();
+        renderFeatures();
+    renderChips(); renderTypes(); renderDevices();
     }
 
     /* ================= 渲染：卡片区 ================= */
@@ -3132,7 +3201,7 @@ function parseTplTopics(yaml) {
             G.push('      CONFIG_LWIP_MAX_SOCKETS: "16"');
             G.push("      CONFIG_MBEDTLS_HKDF_C: y");
         } else {
-            G.push("  restore_from_flash: true");
+            if (feat("restore")) G.push("  restore_from_flash: true");
         }
         G.push("");
         // 网络状态指示：勾选的开关类设备用"自己的引脚"当指示灯（断网亮、联网灭）
@@ -3155,25 +3224,33 @@ function parseTplTopics(yaml) {
             G.push("  on_disconnect:");
             statusDevs.forEach(d => G.push("    - switch.turn_on: " + d.uid));
         }
-        G.push("  ap:");
-        G.push('    ssid: "ESPHOME-Hotspot"');
-        G.push('    password: ""');
-        G.push("");
-        G.push("captive_portal:");
-        G.push("");
+        if (feat("portal")) {
+            G.push("  ap:");
+            G.push('    ssid: "ESPHOME-Hotspot"');
+            G.push('    password: ""');
+            G.push("");
+            G.push("captive_portal:");
+            G.push("");
+        }
         G.push("logger:");
         G.push("  level: " + state.logLevel);
         G.push("");
-        G.push("api:");
-        G.push("  reboot_timeout: 0s");
-        G.push("");
-        G.push("ota:");
-        G.push("  - platform: esphome");
-        G.push("");
-        G.push("web_server:");
-        G.push("  port: 80");
-        G.push("  version: 1");
-        G.push("");
+        if (feat("api")) {
+            G.push("api:");
+            G.push("  reboot_timeout: 0s");
+            G.push("");
+        }
+        if (feat("ota")) {
+            G.push("ota:");
+            G.push("  - platform: esphome");
+            G.push("");
+        }
+        if (feat("web")) {
+            G.push("web_server:");
+            G.push("  port: 80");
+            G.push("  version: 1");
+            G.push("");
+        }
         G.push("external_components:");
         G.push("  - source:");
         G.push("      type: git");
@@ -3665,6 +3742,8 @@ function parseTplTopics(yaml) {
         act.className = "cs-act" + (running ? " danger" : "");
         act.onclick = running ? (onCancel || closeCompile) : closeCompile;
         $("compileMsg").onclick = phase === "done" ? downloadCompiled : null;
+        const bins = $("csBins");
+        if (bins) bins.hidden = phase !== "done";
     }
 
     function downloadCompiled() {
@@ -3675,6 +3754,52 @@ function parseTplTopics(yaml) {
         document.body.appendChild(a);
         a.click();
         a.remove();
+    }
+
+    // 编译产物里的三种 bin：factory（串口整包）/ ota（空中升级）/ bin（纯 app）
+    async function downloadBinKind(kind) {
+        if (!flashState.zipBlob) { showToast("先点「编译」生成固件"); return; }
+        const want = kind === "factory" ? "firmware.factory.bin" : (kind === "ota" ? "firmware.ota.bin" : "firmware.bin");
+        try {
+            const blob = await unzipBin(flashState.zipBlob, null, want);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = want;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            showToast("已下载 " + want + " · " + fmtSize(blob.size));
+        } catch (e) {
+            showToast("取不到 " + want);
+        }
+    }
+    // 命令行 OTA：把 ota.bin 直接 POST 到设备的 /update
+    async function otaPushByIp(ipRaw) {
+        const ip = String(ipRaw || "").trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+        if (!ip) { showToast("先填设备 IP"); return; }
+        if (!flashState.zipBlob) { showToast("先编译，再来推送"); return; }
+        let blob;
+        try { blob = await unzipBin(flashState.zipBlob, null, "firmware.ota.bin"); }
+        catch (e) { showToast("这次产物里没有 firmware.ota.bin"); return; }
+        if (flashState.otaTooBig) {
+            showToast("固件 " + fmtSize(blob.size) + " 超过 OTA 上限，推上去也会失败", 5000);
+            return;
+        }
+        const fd = new FormData();
+        fd.append("update", blob, "firmware.ota.bin");
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "http://" + ip + "/update");
+        xhr.upload.onprogress = e => {
+            if (e.lengthComputable) setCompileMsg("OTA 推送 " + Math.round(e.loaded / e.total * 100) + "%");
+        };
+        xhr.onload = () => {
+            const ok = xhr.responseText && /Successful|OK/i.test(xhr.responseText);
+            setCompileMsg(ok ? "OTA 完成，设备重启中…" : "OTA 被设备拒绝：" + (xhr.responseText || "无响应").slice(0, 40));
+        };
+        xhr.onerror = () => {
+            setCompileMsg("OTA 推送失败：浏览器拦截或被设备拒绝（HTTPS 页面无法访问 http 设备）");
+        };
+        setCompileMsg("OTA 推送中…");
+        xhr.send(fd);
     }
 
     // 只走 OTA 的设备（没法接串口）需要的是 firmware.ota.bin，不是合并后的 factory.bin
@@ -4192,6 +4317,22 @@ function parseTplTopics(yaml) {
             srcRow.appendChild(b);
         });
         pick.appendChild(srcRow);
+
+        // OTA 推送：填设备 IP，直接把 firmware.ota.bin POST 到 /update
+        const otaRow = document.createElement("div");
+        otaRow.className = "ota-push";
+        const ipInp = document.createElement("input");
+        ipInp.id = "otaIp";
+        ipInp.placeholder = "设备 IP · 192.168.50.19";
+        ipInp.value = localStorage.getItem("eh-ota-ip") || "";
+        ipInp.addEventListener("change", () => localStorage.setItem("eh-ota-ip", ipInp.value.trim()));
+        const otaBtn = document.createElement("button");
+        otaBtn.type = "button";
+        otaBtn.textContent = "OTA 推送";
+        otaBtn.addEventListener("click", () => otaPushByIp(ipInp.value));
+        otaRow.appendChild(ipInp);
+        otaRow.appendChild(otaBtn);
+        pick.appendChild(otaRow);
 
         // 固件状态、地址、下载、清空、开始烧录都在下面三张并排卡片里，不再单独占一行
         if (compileAbort) return;
@@ -4985,7 +5126,7 @@ function parseTplTopics(yaml) {
     });
     $("btnCopyInside").addEventListener("click", quickCopy);
     $("btnDownloadInside").addEventListener("click", quickDownload);
-    $("btnOtaInside").addEventListener("click", downloadOta);
+    Array.prototype.forEach.call(document.querySelectorAll("#csBins .cs-bin"), b => b.addEventListener("click", () => downloadBinKind(b.dataset.kind)));
     // 把当前这份配置直接存成「整机模板」卡片（不进编辑器，之后点卡片再编辑）
     $("btnTplFromCode").addEventListener("click", () => {
         const y = yamlForUse();
@@ -5107,6 +5248,7 @@ function parseTplTopics(yaml) {
     renderBemfa();
     renderLogLevels();
     renderErase();
+    renderFeatures();
     renderChips(); renderTypes(); renderDevices();
 })();
 </script>
