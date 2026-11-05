@@ -1297,6 +1297,9 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     ];
     let featOpen = false;
     function renderFeatures() {
+        // 配对码卡片跟着 HomeKit 开关走：关掉 HomeKit 就没有配对码可配了
+        const hkSec = $("hkSection");
+        if (hkSec) hkSec.hidden = !feat("homekit");
         const box = $("featGrid");
         if (!box) return;
         box.innerHTML = "";
