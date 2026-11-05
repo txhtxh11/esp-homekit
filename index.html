@@ -710,10 +710,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         <section id="bemfaSection">
             <div class="section-title"><h2>巴法云</h2><span id="bemfaHint">手机远程</span></div>
             <div id="bemfaBox" hidden>
-                <div class="pair-2" style="margin-top:10px;margin-bottom:10px">
-                    <input class="pair-input" id="bemfaUid" placeholder="巴法云私钥 UID" autocomplete="off" spellcheck="false" aria-label="巴法云私钥 UID">
-                    <input class="pair-input" id="macSuffixInput" placeholder="MAC 后缀·如 49ff8e" spellcheck="false" aria-label="MAC 后缀">
-                </div>
+                <div class="pair-2" style="margin-top:10px;margin-bottom:10px"><input class="pair-input" id="bemfaUid" placeholder="巴法云私钥 UID" autocomplete="off" spellcheck="false" aria-label="巴法云私钥 UID"></div>
                 <div class="grid" id="bemfaTopics"></div>
             </div>
             <div id="bemfaLocked" class="card" hidden>
@@ -1015,7 +1012,6 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         customFlash: { esp8266: "", esp32: "" },
         wifi: { ssid: "", pass: "" },
         features: { web: true, api: true, portal: true, ota: true, restore: true },
-        macSuffix: "",       // 巴法云主题里那截 MAC 后缀（选填，运行时才知道）
         nodeName: "",        // esphome.name：留空 = esp_homekit_device + MAC 后缀
         friendlyName: "",    // esphome.friendly_name：留空 = ESP HomeKit 设备
         hkCode: "111-22-333",
@@ -1038,7 +1034,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 board: state.board, customBoard: state.customBoard,
                 flash: state.flash, customFlash: state.customFlash,
                 wifi: state.wifi, hkCode: state.hkCode,
-                nodeName: state.nodeName, friendlyName: state.friendlyName, macSuffix: state.macSuffix,
+                nodeName: state.nodeName, friendlyName: state.friendlyName,
                 features: state.features,
                 bemfa: state.bemfa, logLevel: state.logLevel,
                 seq: state.seq,
@@ -1072,7 +1068,6 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                     if (typeof s.features[k] === "boolean") state.features[k] = s.features[k];
                 });
             }
-            if (typeof s.macSuffix === "string") state.macSuffix = s.macSuffix;
             if (typeof s.nodeName === "string") state.nodeName = s.nodeName;
             if (typeof s.friendlyName === "string") state.friendlyName = s.friendlyName;
             if (typeof s.logLevel === "string" && s.logLevel) state.logLevel = s.logLevel;
@@ -2271,11 +2266,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     // 同一个设备无论怎么重加卡片，主题都不会变；同类型的第 2 个实体起加序号区分。
     function bmSan(s) { return String(s || "").replace(/[^A-Za-z0-9]/g, ""); }   // 巴法后台只收字母和数字
     // 主题前缀就是设备名（ESPHome 会在后面自动接 MAC 后缀，那是运行时的事，这里只管用户填的名字）
-    function bmBaseName() {
-        const n = bmSan(state.nodeName || "esp_homekit_device");
-        const m = bmSan(state.macSuffix || "");
-        return m ? n + m : n;
-    }
+    function bmBaseName() { return bmSan(state.nodeName || "esp_homekit_device"); }
     function bemfaTopic(n, suffix) {
         // 巴法主题允许字母/数字/下划线，且必须以后三位类型码结尾
         return BEMFA_PREFIX + bmBaseName() + n + suffix;   // orvibo49ff8e1006（只含字母数字，巴法才收）
@@ -2331,7 +2322,6 @@ function parseTplTopics(yaml) {
         if (!box) return;
         box.hidden = !state.bemfa.on;
         $("bemfaUid").value = state.bemfa.uid;
-        if ($("macSuffixInput")) $("macSuffixInput").value = state.macSuffix || "";
         renderBemfaTopics();
         paintBemfaSection();
     }
@@ -5282,12 +5272,6 @@ function parseTplTopics(yaml) {
     }
 
     // 巴法云控件
-    $("macSuffixInput").addEventListener("input", e => {
-        state.macSuffix = e.target.value.replace(/[^0-9a-zA-Z]/g, "").toLowerCase();
-        scheduleSave();
-        renderBemfaTopics();
-    });
-
     $("bemfaUid").addEventListener("input", e => { state.bemfa.uid = e.target.value.trim(); bemfaSave(); scheduleSave(); });
 
     bemfaLoad();
