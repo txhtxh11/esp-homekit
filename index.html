@@ -2053,8 +2053,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             if (dev.type === "button") {
                 // 物理按键专属：长按自定义时长重置 HomeKit 配对
                 const frRow = document.createElement("div"); frRow.className = "form-row";
-                frRow.innerHTML = '<label class="form-label">长按重置 HomeKit</label>';
-                toggleCards(frRow, !!dev.io.longReset, { offSub: "不启用", onSub: "长按自定义时长" }, v => {
+                frRow.innerHTML = '<label class="form-label">长按恢复出厂</label>';
+                toggleCards(frRow, !!dev.io.longReset, { offSub: "不启用", onSub: "长按重置配对" }, v => {
                     dev.io.longReset = v;
                     renderDetailGeneric(dev);   // 需要在下方插入秒数输入框
                 });
@@ -3584,7 +3584,9 @@ function parseTplTopics(yaml) {
             }
         }
         G.push("");
-        if (!isEsp32) {
+        // 这两个实体要靠 HA(api) 或 网页(web_server) 才有入口；两个都关了就不生成
+        const hasUi = feat("api") || feat("web");
+        if (!isEsp32 && hasUi) {
             // 这两个都是 homekit-esp8266 专属：reset_storage 动作、get_setup_code() 接口
             G.push("button:");
             G.push("  - platform: template");
@@ -3605,7 +3607,7 @@ function parseTplTopics(yaml) {
             G.push("      return code;");
             G.push("");
         } else {
-            G.push("# homekit-esp32 没有「重置配对」和「配对码状态」这两个接口，下面两块省略");
+            G.push("# HomeKit 重置与配对码需要 api / 网页才有入口，当前两者都关，已省略");
             G.push("# 要重置配对：擦除 flash 后重新烧录（配对信息存在 NVS 里）");
             G.push("");
         }
