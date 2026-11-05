@@ -1571,7 +1571,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             // 输出/信号方向与 WiFi 指示灯：反向输出开关关闭=常规、打开=反向；
             // 门磁/人体/按键类信号默认低电平触发（保持反向）
             dev.io = { inverted: t.kind === "binary", boot: "off", statusLed: false,
-                       blinkReset: false, blinkSec: 60 };
+                       blinkReset: false, blinkSec: 30 };
             if (type === "button") {
                 dev.io.longReset = true; dev.io.longResetSec = 5;    // 长按重置配对（默认开）
                 dev.io.factoryReset = false; dev.io.factoryResetSec = 10;  // 长按恢复出厂（默认关）
@@ -2112,11 +2112,11 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 ioSection.appendChild(blRow);
                 if (dev.io.blinkReset) {
                     const bsRow = document.createElement("div"); bsRow.className = "form-row";
-                    bsRow.innerHTML = '<label class="form-label">慢闪时长（秒）</label><input class="form-input" type="number" id="blSec" min="5" max="600" step="5" value="' + (parseInt(dev.io.blinkSec, 10) || 60) + '">';
+                    bsRow.innerHTML = '<label class="form-label">慢闪时长（秒）</label><input class="form-input" type="number" id="blSec" min="5" max="600" step="5" value="' + (parseInt(dev.io.blinkSec, 10) || 30) + '">';
                     ioSection.appendChild(bsRow);
                     bsRow.querySelector("#blSec").addEventListener("input", e => {
                         const v = parseInt(e.target.value, 10);
-                        dev.io.blinkSec = isNaN(v) ? 60 : Math.min(Math.max(v, 5), 600);
+                        dev.io.blinkSec = isNaN(v) ? 30 : Math.min(Math.max(v, 5), 600);
                     });
                 }
             }
@@ -3495,7 +3495,7 @@ function parseTplTopics(yaml) {
 
         // 「重置后慢闪」：找勾了网络状态指示 + 慢闪的那盏灯，生成一行启动语句
         const blinkDev = relays.find(d => d.io && d.io.statusLed && d.io.blinkReset);
-        const blinkSec = blinkDev ? Math.min(Math.max(parseInt(blinkDev.io.blinkSec, 10) || 60, 5), 600) : 0;
+        const blinkSec = blinkDev ? Math.min(Math.max(parseInt(blinkDev.io.blinkSec, 10) || 30, 5), 600) : 0;
         const hkBlinkLine = blinkDev
             ? "- lambda: id(hk_blink_until) = millis() + " + (blinkSec * 1000) + "UL;"
             : "";
