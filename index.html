@@ -331,6 +331,8 @@
         background: var(--panel2); color: var(--fg); font-size: 12px; font-weight: 600;
         font-family: inherit; letter-spacing: .3px; }
     .cs-bin:active { background: var(--panel3, #333); }
+    .cs-bin.on { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+    .cs-bin { font-family: ui-monospace, monospace; letter-spacing: 0; }
     /* 烧录来源行的 OTA 推送 */
     .bm-card { position: relative; }
     .bm-card .name { font-family: ui-monospace, monospace; font-size: 12.5px; letter-spacing: -.2px; padding-right: 22px; }
@@ -3767,18 +3769,59 @@ function parseTplTopics(yaml) {
         act.className = "cs-act" + (running ? " danger" : "");
         act.onclick = running ? (onCancel || closeCompile) : closeCompile;
         $("compileMsg").onclick = phase === "done" ? downloadCompiled : null;
-        const bins = $("csBins");
-        if (bins) bins.hidden = phase !== "done";
+        paintBinPick();
     }
 
-    function downloadCompiled() {
-        if (!flashState.compiled || !flashState.binUrl) return;
-        const a = document.createElement("a");
-        a.href = flashState.binUrl;
-        a.download = "firmware.bin";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+    async function downloadCompiled() {
+        if (!flashState.compiled) return;
+        const kind = flashState.binKind || "bin";
+        const meta = BIN_KINDS.find(x => x[0] === kind) || BIN_KINDS[2];
+        try {
+            let blob = await binBlob(kind).catch(() => null);
+            if (!blob && flashState.binUrl) blob = await (await fetch(flashState.binUrl)).blob();
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = meta[1];
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            showToast("已下载 " + meta[1] + " · " + fmtSize(blob.size));
+        } catch (e) {
+            showToast("取不到 " + meta[1]);
+        }
+    }
+
+    // 编译产物里的三种 bin：factory（串口整包）/ ota（空中升级）/ bin（纯 app）
+    const BIN_KINDS = [
+        ["factory", "firmware.factory.bin", "串口整包"],
+        ["ota", "firmware.ota.bin", "空中升级"],
+        ["bin", "firmware.bin", "应用分区"]
+    ];
+    async function binBlob(kind) {
+        if (!flashState.zipBlob) return null;
+        flashState.kindBlobs = flashState.kindBlobs || {};
+        if (flashState.kindBlobs[kind]) return flashState.kindBlobs[kind];
+        const want = (BIN_KINDS.find(k => k[0] === kind) || BIN_KINDS[2])[1];
+        const blob = await unzipBin(flashState.zipBlob, null, want);
+        flashState.kindBlobs[kind] = blob;
+        return blob;
+    }
+    // 三个 bin 卡片：点哪张就选中哪张，下载/烧录/OTA 都按选中的来
+    function paintBinPick() {
+        const box = $("csBins");
+        if (!box) return;
+        box.hidden = !(flashState.compiled && flashState.mode === "auto");
+        if (box.hidden) return;
+        Array.prototype.forEach.call(box.querySelectorAll(".cs-bin"), b => {
+            const k = b.dataset.kind;
+            b.classList.toggle("on", k === flashState.binKind);
+            const meta = BIN_KINDS.find(x => x[0] === k);
+            b.textContent = meta ? meta[0] : k;
+            b.title = meta ? meta[1] + " · " + meta[2] : "";
+        });
     }
 
     // 编译产物里的三种 bin：factory（串口整包）/ ota（空中升级）/ bin（纯 app）
@@ -3803,7 +3846,7 @@ function parseTplTopics(yaml) {
         if (!ip) { showToast("先填设备 IP"); return; }
         if (!flashState.zipBlob) { showToast("先编译，再来推送"); return; }
         let blob;
-        try { blob = await unzipBin(flashState.zipBlob, null, "firmware.ota.bin"); }
+        try { blob = await binBlob("ota"); }
         catch (e) { showToast("这次产物里没有 firmware.ota.bin"); return; }
         if (flashState.otaTooBig) {
             showToast("固件 " + fmtSize(blob.size) + " 超过 OTA 上限，推上去也会失败", 5000);
@@ -3953,6 +3996,9 @@ function parseTplTopics(yaml) {
         const mb = flashMbNow();
         const otaMax = mb >= 2 ? 1048576 : 520192;
         flashState.otaTooBig = res.blob.size > otaMax;
+        flashState.kindBlobs = {};                       // 新产物，缓存作废
+        flashState.binKind = state.chip === "esp32" ? "factory" : "bin";
+        paintBinPick();
         flashState.otaMax = otaMax;
         // 状态条若还开着（比如在烧录卡片里重新编译过），同步刷新它的完成文案
         const bar = $("compileStatus");
@@ -4275,7 +4321,11 @@ function parseTplTopics(yaml) {
     }
     // 当前固件的二进制：编译产物 / 本地文件 / 直链下载
     async function flashFirmwareBlob() {
-        if (flashState.mode === "auto") return flashState.compiled ? flashState.compiled.blob : null;
+        if (flashState.mode === "auto") {
+            if (!flashState.compiled) return null;
+            const b = await binBlob(flashState.binKind || "bin").catch(() => null);
+            return b || flashState.compiled.blob;   // 没 zip 时退回编译产物本身
+        }
         if (flashState.mode === "file") return flashState.file || null;
         const u = (flashState.url || "").trim();
         if (!u) return null;
@@ -4384,7 +4434,10 @@ function parseTplTopics(yaml) {
         // 左段文案：编译产物 / 本地文件 / 直链文件名
         const fwSummary = () => {
             if (flashState.mode === "auto") {
-                if (flashState.compiled && compiledFresh()) return "firmware.bin";
+                if (flashState.compiled && compiledFresh()) {
+                    const meta = BIN_KINDS.find(x => x[0] === (flashState.binKind || "bin"));
+                    return meta ? meta[1] : "firmware.bin";
+                }
                 return flashState.err ? "编译失败" : "未编译";
             }
             if (flashState.mode === "file") {
@@ -4482,6 +4535,7 @@ function parseTplTopics(yaml) {
 
         // 有了固件才谈得上推送：OTA 行放在「开始编译 / 开始烧录」下面
         pick.appendChild(otaRow);
+        paintBinPick();
     }
 
     // 「擦除」工具卡：选中即整卡高亮（不改文案，不加 ✓）
@@ -5159,7 +5213,12 @@ function parseTplTopics(yaml) {
     });
     $("btnCopyInside").addEventListener("click", quickCopy);
     $("btnDownloadInside").addEventListener("click", quickDownload);
-    Array.prototype.forEach.call(document.querySelectorAll("#csBins .cs-bin"), b => b.addEventListener("click", () => downloadBinKind(b.dataset.kind)));
+    Array.prototype.forEach.call(document.querySelectorAll("#csBins .cs-bin"), b => b.addEventListener("click", () => {
+        flashState.binKind = b.dataset.kind;
+        paintBinPick();
+        renderFlashPick();
+        flashLog("已选择 " + b.title);
+    }));
     // 把当前这份配置直接存成「整机模板」卡片（不进编辑器，之后点卡片再编辑）
     $("btnTplFromCode").addEventListener("click", () => {
         const y = yamlForUse();
