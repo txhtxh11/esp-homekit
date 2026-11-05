@@ -936,6 +936,40 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
        备份方式：模板管理器可「导出备份」为 JSON 文件，换设备/清缓存后导入还原
     */
     const CM_TPL_STORE = "esphk_cm_templates_v1";
+    // ===== 内置三份 ORVIBO S30C 整机模板（首次打开自动补齐，不覆盖已有模板）=====
+    const ORVIBO_SEED_TEMPLATES = [
+    {
+        "id": "tpl_orvibo_min",
+        "icon": "📦",
+        "name": "orvibo 最小底座",
+        "sub": "OTA 前置 · 370KB",
+        "chip": "esp8266",
+        "node": "orvibo",
+        "vars": [],
+        "yaml": "# ============================================================\n# ORVIBO S30C · 最小底座固件（无 HomeKit / 无巴法云）\n# 用途：OTA 前置——先把设备刷成这版腾出空间，再刷目标固件\n# 体积：约 370 KB（OTA 上限约 520 KB）\n# 包含：WiFi + 断网热点配网 + Web 网页 + OTA\n# ============================================================\n\nesphome:\n  name: \"{{node_name}}\"\n  friendly_name: \"{{deviceName}}\"\n  name_add_mac_suffix: true\n  on_boot:\n    priority: 800\n    then:\n      - lambda: |-\n          WiFi.setPhyMode(WIFI_PHY_MODE_11G);\n  platformio_options:\n    board_build.f_cpu: 160000000L\n    board_build.ldscript: eagle.flash.1m.ld\n\nesp8266:\n  board: esp01_1m\n  restore_from_flash: true\n\nwifi:\n  min_auth_mode: WPA2\n  power_save_mode: none\n  ssid: \"{{wifi_ssid}}\"\n  password: \"{{wifi_pass}}\"\n  reboot_timeout: 0s\n  ap:\n    ssid: \"ESPHOME-Hotspot\"\n    password: \"\"\n\ncaptive_portal:\n\nlogger:\n  level: INFO\n\nota:\n  - platform: esphome\n\nweb_server:\n  port: 80\n  version: 1\n"
+    },
+    {
+        "id": "tpl_orvibo_hk",
+        "icon": "🏠",
+        "name": "orvibo 无巴法",
+        "sub": "HomeKit 全功能 · 配对用",
+        "chip": "esp8266",
+        "node": "orvibo",
+        "vars": [],
+        "yaml": "# ============================================================\n# ORVIBO S30C · 全功能固件（HomeKit 单协议，无巴法云）\n#\n# 【为什么先刷这一版】\n# HomeKit 配对要做 SRP-3072 大数运算，ESP8266 上会阻塞主循环 14 秒以上\n# （实测日志：coroutine took a long time for an operation (14491 ms)）。\n# 同时开 MQTT 会额外吃内存与网络，iOS 等不到响应 -> \"连接丢失\"。\n# 所以正确顺序是：\n#   ① 刷本版（无 MQTT）→ 在家庭 App 完成配对\n#   ② 再刷带巴法云的版本 → 配对信息存在 NVS，OTA 不会清除\n#\n# 体积：约 508 KB\n# 包含：HomeKit + Web 网页 + API + 日志 + 长按两档 + 恢复出厂\n# ============================================================\n\nesphome:\n  name: \"{{node_name}}\"\n  friendly_name: \"{{deviceName}}\"\n  name_add_mac_suffix: true\n  on_boot:\n    priority: 800\n    then:\n      - lambda: |-\n          WiFi.setPhyMode(WIFI_PHY_MODE_11G);\n  platformio_options:\n    board_build.f_cpu: 160000000L\n    board_build.ldscript: eagle.flash.1m.ld\n    build_flags:\n      - \"-D HOMEKIT_LOG_LEVEL=0 -D ARDUINO_HOMEKIT_LOWROM\"\n\nesp8266:\n  board: esp01_1m\n  restore_from_flash: true\n\nwifi:\n  min_auth_mode: WPA2\n  power_save_mode: none\n  ssid: \"{{wifi_ssid}}\"\n  password: \"{{wifi_pass}}\"\n  reboot_timeout: 0s\n  on_connect:\n    - switch.turn_off: relay_3\n  on_disconnect:\n    - switch.turn_on: relay_3\n  ap:\n    ssid: \"ESPHOME-Hotspot\"\n    password: \"\"\n\ncaptive_portal:\n\nlogger:\n  level: INFO\n\napi:\n  reboot_timeout: 0s\n\nota:\n  - platform: esphome\n\nweb_server:\n  port: 80\n  version: 1\n  log: true\n\nexternal_components:\n  - source:\n      type: git\n      url: https://github.com/txhtxh11/homekit\n      path: homekit-esp8266\n    refresh: 7d\n    components: [homekit]\n\nswitch:\n  - platform: gpio\n    id: relay_1\n    name: \"orvibo\"\n    pin:\n      number: GPIO5\n    restore_mode: ALWAYS_OFF\n    on_turn_on:\n      - switch.turn_on: relay_2\n    on_turn_off:\n      - switch.turn_off: relay_2\n\n  - platform: gpio\n    id: relay_2\n    name: \"GPIO4 Output\"\n    pin:\n      number: GPIO4\n    restore_mode: ALWAYS_OFF\n\n  - platform: gpio\n    id: relay_3\n    name: \"Network Status LED (GPIO12)\"\n    pin:\n      number: GPIO12\n    restore_mode: ALWAYS_OFF\n\n  - platform: factory_reset\n    id: wipe_all\n    name: \"恢复出厂设置\"\n    internal: true\n\nbinary_sensor:\n  - platform: gpio\n    id: button_1\n    name: \"Physical Button (GPIO14)\"\n    pin:\n      number: GPIO14\n      mode: INPUT_PULLUP\n      inverted: true\n    on_click:\n      min_length: 50ms\n      max_length: 350ms\n      then:\n        - switch.toggle: relay_1\n    on_multi_click:\n      - timing:\n          - ON for at least 10s\n        then:\n          - switch.turn_on: wipe_all\n      - timing:\n          - ON for at least 5s\n          - OFF for at least 0.1s\n        then:\n          - homekit.reset_storage:\n              id: my_hk\n\nhomekit:\n  id: my_hk\n  setup_code: \"111-22-333\"\n  switches:\n    - relay_1\n  binary_sensors:\n    - id: button_1\n      type: contact\n\nbutton:\n  - platform: template\n    name: \"重置 HomeKit 配对\"\n    id: reset_homekit_btn\n    icon: \"mdi:restart-alert\"\n    on_press:\n      - homekit.reset_storage: my_hk\n\ntext_sensor:\n  - platform: template\n    name: \"HomeKit 配对码状态\"\n    id: hk_setup_text_sensor\n    update_interval: 12h\n    lambda: |-\n      std::string code = id(my_hk)->get_setup_code();\n      if (code.empty()) return std::string(\"等待生成中\");\n      return code;\n"
+    },
+    {
+        "id": "tpl_orvibo_dual",
+        "icon": "📡",
+        "name": "orvibo 双协议",
+        "sub": "HomeKit + 巴法云",
+        "chip": "esp8266",
+        "node": "orvibo",
+        "vars": [],
+        "yaml": "# ============================================================\n# ORVIBO S30C · 双协议固件（HomeKit + 巴法云 MQTT）\n#\n# 【双协议方案说明】\n# 1) 配对必须在「无 MQTT」的固件上完成：\n#    HomeKit 配对要做 SRP-3072 大数运算，ESP8266 实测阻塞主循环 14.5 秒；\n#    同时跑 MQTT 会挤内存和网络，iOS 等不到响应就报 \"连接丢失\"。\n# 2) 配对信息存在 NVS，OTA 不会清除，所以顺序是：\n#    刷「无巴法全功能版」→ 配对成功 → 再刷本版 → 配对保留，巴法云同时可用。\n# 3) HomeKit 与巴法云各自独立控制同一个继电器，互不依赖：\n#    - 苹果家庭：走 HAP，局域网直连，无需外网\n#    - 巴法云：走 MQTT（bemfa.com:9501），手机在外网也能控制\n# 4) 主题命名规则：<设备名><序号><类型码>，全字母数字（巴法只收字母数字）\n#    本设备：orvibo1006（006 = 开关）\n#\n# 体积：约 505 KB（OTA 镜像 509 KB，上限约 520 KB）\n# 注意：本版不含 logger，网页 Debug Log 无输出\n# ============================================================\n\nesphome:\n  name: \"{{node_name}}\"\n  friendly_name: \"{{deviceName}}\"\n  name_add_mac_suffix: true\n  on_boot:\n    priority: 800\n    then:\n      - lambda: |-\n          WiFi.setPhyMode(WIFI_PHY_MODE_11G);\n  platformio_options:\n    board_build.f_cpu: 160000000L\n    board_build.ldscript: eagle.flash.1m.ld\n    build_flags:\n      - \"-D HOMEKIT_LOG_LEVEL=0 -D ARDUINO_HOMEKIT_LOWROM\"\n\nesp8266:\n  board: esp01_1m\n  restore_from_flash: true\n\nwifi:\n  min_auth_mode: WPA2\n  power_save_mode: none\n  ssid: \"{{wifi_ssid}}\"\n  password: \"{{wifi_pass}}\"\n  reboot_timeout: 0s\n  on_connect:\n    - switch.turn_off: relay_3\n  on_disconnect:\n    - switch.turn_on: relay_3\n  ap:\n    ssid: \"ESPHOME-Hotspot\"\n    password: \"\"\n\ncaptive_portal:\n\nota:\n  - platform: esphome\n\nweb_server:\n  port: 80\n  version: 1\n\nexternal_components:\n  - source:\n      type: git\n      url: https://github.com/txhtxh11/homekit\n      path: homekit-esp8266\n    refresh: 7d\n    components: [homekit]\n\n# ↓ 把三处 PASTE_YOUR_BEMFA_UID 换成你自己的巴法云私钥（控制台首页可见）\nmqtt:\n  broker: bemfa.com\n  port: 9501\n  username: \"PASTE_YOUR_BEMFA_UID\"\n  password: \"PASTE_YOUR_BEMFA_UID\"\n  client_id: \"PASTE_YOUR_BEMFA_UID\"\n  topic_prefix: \"esphome_bridge\"\n  discovery: false\n  on_connect:\n    - mqtt.publish:\n        topic: orvibo1006/set\n        payload: !lambda 'return id(relay_1).state ? \"on\" : \"off\";'\n  on_message:\n    - topic: orvibo1006\n      then:\n        - lambda: |-\n            if (x == \"on\") { id(relay_1).turn_on(); }\n            else if (x == \"off\") { id(relay_1).turn_off(); }\n\nswitch:\n  - platform: gpio\n    id: relay_1\n    name: \"orvibo\"\n    pin:\n      number: GPIO5\n    restore_mode: ALWAYS_OFF\n    on_turn_on:\n      - switch.turn_on: relay_2\n      - mqtt.publish:\n          topic: orvibo1006/set\n          payload: \"on\"\n    on_turn_off:\n      - switch.turn_off: relay_2\n      - mqtt.publish:\n          topic: orvibo1006/set\n          payload: \"off\"\n\n  - platform: gpio\n    id: relay_2\n    name: \"GPIO4 Output\"\n    pin:\n      number: GPIO4\n    restore_mode: ALWAYS_OFF\n\n  - platform: gpio\n    id: relay_3\n    name: \"Network Status LED (GPIO12)\"\n    pin:\n      number: GPIO12\n    restore_mode: ALWAYS_OFF\n\n  - platform: factory_reset\n    id: wipe_all\n    name: \"恢复出厂设置\"\n    internal: true\n\nbinary_sensor:\n  - platform: gpio\n    id: button_1\n    name: \"Physical Button (GPIO14)\"\n    pin:\n      number: GPIO14\n      mode: INPUT_PULLUP\n      inverted: true\n    on_click:\n      min_length: 50ms\n      max_length: 350ms\n      then:\n        - switch.toggle: relay_1\n    on_multi_click:\n      - timing:\n          - ON for at least 10s\n        then:\n          - switch.turn_on: wipe_all\n      - timing:\n          - ON for at least 5s\n          - OFF for at least 0.1s\n        then:\n          - homekit.reset_storage:\n              id: my_hk\n\nhomekit:\n  id: my_hk\n  setup_code: \"111-22-333\"\n  switches:\n    - relay_1\n  binary_sensors:\n    - id: button_1\n      type: contact\n\nbutton:\n  - platform: template\n    name: \"重置 HomeKit 配对\"\n    id: reset_homekit_btn\n    icon: \"mdi:restart-alert\"\n    on_press:\n      - homekit.reset_storage: my_hk\n"
+    }
+];
+
     const TPL_KEY_STORE = "eh-tpl-key";   // 云端保存口令（本机记住，换设备重填一次）
 
     function tplCloudKey() {
@@ -5310,6 +5344,7 @@ function parseTplTopics(yaml) {
         addDevice: addDevice,
         buildYaml: buildYaml,
         reverseTpl: tplReverseApply,
+        clearTemplates: () => { state.cmTemplates = []; try { saveCmTemplates(); } catch (e) { } renderTypes(); },
         saveBackTpl: tplSaveBack,
         getState: () => state,
         setChip: chip => { state.chip = chip; },
@@ -5362,6 +5397,17 @@ function parseTplTopics(yaml) {
 
     // 启动时读取已保存的自定义整机模板（localStorage 先当缓存，随后与云端合并）
     state.cmTemplates = loadCmTemplates();
+    (function seedOrviboTemplates() {
+        const SEED_VER = "orvibo-1";
+        let done = "";
+        try { done = localStorage.getItem("eh-seed-ver") || ""; } catch (e) { }
+        if (done === SEED_VER) return;          // 已经补过，用户删掉的模板不再自动回来
+        const have = new Set((state.cmTemplates || []).map(t => t.id));
+        ORVIBO_SEED_TEMPLATES.forEach(t => {
+            if (!have.has(t.id)) state.cmTemplates.push(JSON.parse(JSON.stringify(t)));
+        });
+        try { saveCmTemplates(); localStorage.setItem("eh-seed-ver", SEED_VER); } catch (e) { }
+    })();
     pullTplCloud();
 
     // 恢复上次的配置：芯片/板型/FLASH/WiFi/配对码/设备卡片全部还原，刷新不用重配
