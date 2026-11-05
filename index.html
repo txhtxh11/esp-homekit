@@ -2396,8 +2396,16 @@ function parseTplTopics(yaml) {
             hk_code: fmtHkCode(state.hkCode).replace(/\D/g, "")
         };
         Object.keys(dev.vars || {}).forEach(k => { bmap[k] = dev.vars[k]; });
+        // 模板里声明的变量，值没填时用它自己的默认值；再没有就置空，绝不把 {{x}} 漏进 YAML
+        const tplVars = def.vars || [];
+        const varDef = k => {
+            const v = tplVars.find(x => x.key === k);
+            return v && v.def != null ? String(v.def) : "";
+        };
         const out = String(def.yaml || "").replace(/\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g, (m, k) =>
-            Object.prototype.hasOwnProperty.call(bmap, k) ? String(bmap[k] == null ? "" : bmap[k]) : m);
+            Object.prototype.hasOwnProperty.call(bmap, k) && bmap[k] !== "" && bmap[k] != null
+                ? String(bmap[k])
+                : varDef(k));
         // 整机模板也支持注入巴法云：把模板里的开关一个个挂上主题
         return out;   // 自定义整机模板不注入巴法云（用户自己写）
     }
@@ -2516,9 +2524,14 @@ function parseTplTopics(yaml) {
             let m = l.match(/^\s{2}ssid:\s*"([^"]*)"/); if (m && !r.ssid) r.ssid = m[1];
             m = l.match(/^\s{2}password:\s*"([^"]*)"/); if (m && !r.pass) r.pass = m[1];
         });
+        r.hkSw = [];
+        let hkSec = "setup";
         tplSection(yaml, "homekit").forEach(l => {
             const m = l.match(/setup_code:\s*"([^"]+)"/);
             if (m) r.hk = m[1];
+            if (/^\s{2}switches:/.test(l)) { hkSec = "sw"; return; }
+            if (/^\s{2}\S/.test(l)) { hkSec = "other"; return; }
+            if (hkSec === "sw") { const s = l.match(/^\s{4}-\s*([A-Za-z0-9_]+)/); if (s) r.hkSw.push(s[1]); }
         });
         tplChunks(tplSection(yaml, "switch")).forEach(chunk => {
             const text = chunk.join("\n");
@@ -2608,6 +2621,7 @@ function parseTplTopics(yaml) {
             d.pinOverrides = { pin: s.pin };
             d.io.boot = s.on ? "on" : "off";
             d.io.inverted = s.inv;
+            d.io.localOnly = !!(r.hkSw && r.hkSw.length && !r.hkSw.includes(s.id));
             state.devices.push(d);
             if (s.id) map[s.id] = d.uid;
             s._dev = d;
@@ -3717,6 +3731,9 @@ function parseTplTopics(yaml) {
 
     async function runCompile(onTick) {
         const y = yamlForUse();
+        // 模板变量没填会留下 {{x}}，直接拦住，别把坏 YAML 送去编译
+        const left = (y.match(/\{\{\s*[A-Za-z0-9_.-]+\s*\}\}/g) || []);
+        if (left.length) { const err = new Error("模板变量没填：" + Array.from(new Set(left)).join("、")); err.userFacing = true; throw err; }
         const cmNow = cmDev();
         const cmNowDef = cmNow ? cmDef(cmNow.type) : null;
         const deviceName = (state.nodeName || "").trim() ||
