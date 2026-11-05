@@ -331,12 +331,6 @@
         font-family: inherit; letter-spacing: .3px; }
     .cs-bin:active { background: var(--panel3, #333); }
     /* 烧录来源行的 OTA 推送 */
-    .ota-push { display: flex; gap: 8px; padding: 0 12px 10px; }
-    .ota-push input { flex: 1 1 0; height: 36px; border-radius: 9px; border: 1px solid var(--line);
-        background: var(--panel2); color: var(--fg); padding: 0 12px; font-size: 13px; font-family: inherit; }
-    .ota-push button { flex: 0 0 auto; padding: 0 14px; height: 36px; border-radius: 9px;
-        border: 1px solid var(--accent); background: transparent; color: var(--accent);
-        font-size: 13px; font-weight: 700; font-family: inherit; }
     .bm-card { position: relative; }
     .bm-card .name { font-family: ui-monospace, monospace; font-size: 12.5px; letter-spacing: -.2px; padding-right: 22px; }
     .bm-del { position: absolute; top: 6px; right: 8px; font-size: 12px; line-height: 1; color: var(--muted); padding: 4px; }
@@ -4350,14 +4344,20 @@ function parseTplTopics(yaml) {
 
         // OTA 推送：填设备 IP，直接把 firmware.ota.bin POST 到 /update
         const otaRow = document.createElement("div");
-        otaRow.className = "ota-push";
+        otaRow.className = "pair-2";
+        otaRow.style.padding = "0 12px 10px";
         const ipInp = document.createElement("input");
+        ipInp.className = "pair-input";
+        ipInp.style.height = "60px";
+        ipInp.style.fontSize = "13px";
         ipInp.id = "otaIp";
         ipInp.placeholder = "设备 IP · 192.168.50.19";
         ipInp.value = localStorage.getItem("eh-ota-ip") || "";
         ipInp.addEventListener("change", () => localStorage.setItem("eh-ota-ip", ipInp.value.trim()));
         const otaBtn = document.createElement("button");
         otaBtn.type = "button";
+        otaBtn.className = "pair-btn";
+        otaBtn.style.height = "60px";
         otaBtn.textContent = "OTA 推送";
         otaBtn.addEventListener("click", () => otaPushByIp(ipInp.value));
         otaRow.appendChild(ipInp);
