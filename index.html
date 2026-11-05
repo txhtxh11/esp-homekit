@@ -3950,6 +3950,8 @@ function parseTplTopics(yaml) {
     async function otaPushByIp(ipRaw) {
         const ip = String(ipRaw || "").trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
         if (!ip) { showToast("先填设备 IP"); return; }
+        // /update 是设备网页的接口：Web 模块关掉时根本没有这个地址
+        if (!feat("web")) { showToast("固件没开 Web 网页，设备没有 /update 接口，OTA 推送用不了", 5000); return; }
         if (!flashState.zipBlob) { showToast("先编译，再来推送"); return; }
         let blob;
         try { blob = await binBlob("ota"); }
