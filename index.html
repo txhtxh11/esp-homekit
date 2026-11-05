@@ -3660,8 +3660,14 @@ function parseTplTopics(yaml) {
             G.push("      return code;");
             G.push("");
         } else {
-            G.push("# HomeKit 重置与配对码需要 api / 网页才有入口，当前两者都关，已省略");
-            G.push("# 要重置配对：擦除 flash 后重新烧录（配对信息存在 NVS 里）");
+            G.push("# 未开 api / 网页：配对码状态与「重置配对」按钮不生成");
+            const lpBtn = state.devices.find(d => d.type === "button" && d.io && d.io.longReset);
+            if (lpBtn) {
+                const sec = Math.min(Math.max(parseInt(lpBtn.io.longResetSec, 10) || 5, 1), 60);
+                G.push("# 重置配对：长按物理按键 " + sec + " 秒");
+            } else {
+                G.push("# 重置配对：给按键开启「长按重置配对」，或开启 Web 网页 / API");
+            }
             G.push("");
         }
         G.push("# ========== 配置结束 ==========");
