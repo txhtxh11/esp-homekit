@@ -1293,7 +1293,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         ["portal", "配网热点", "断网自动开热点"],
         ["ota", "OTA", "空中升级"],
         ["restore", "状态记忆", "断电记住开关"],
-        ["weblog", "网页日志", "在线看设备输出"]
+        ["weblog", "网页日志", "在线看设备输出"],
+        ["homekit", "HomeKit", "苹果家庭直连"]
     ];
     let featOpen = false;
     function renderFeatures() {
@@ -2732,6 +2733,20 @@ function parseTplTopics(yaml) {
         showToast("已按模板填充 " + state.devices.length + " 个设备");
     }
 
+    // 从生成结果里按顶层键整段剔除（用于关掉 HomeKit 时去掉依赖它的段落）
+    const HK_SECTIONS = ["homekit", "external_components", "button", "text_sensor"];
+    function stripHomekit(lines) {
+        const out = [];
+        let skip = false;
+        lines.forEach(l => {
+            const m = l.match(/^([A-Za-z_][A-Za-z0-9_]*):/);
+            if (m) skip = HK_SECTIONS.indexOf(m[1]) >= 0;
+            if (!skip) out.push(l);
+        });
+        while (out.length && (out[out.length - 1] === "" || /^#/.test(out[out.length - 1]))) out.pop();
+        return out;
+    }
+
     function buildYaml() {
         const anyCm = cmDev();
         // 自定义整机模板优先：输出模板内的完整配置
@@ -3583,6 +3598,8 @@ function parseTplTopics(yaml) {
             G.push("");
         }
         G.push("# ========== 配置结束 ==========");
+        // 关掉 HomeKit：把 homekit / 外部组件 / 配对按钮 / 配对码状态 四段整段摘掉
+        if (!feat("homekit")) return stripHomekit(G).join("\n");
         return G.join("\n");
     }
 
