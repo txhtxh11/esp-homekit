@@ -1503,9 +1503,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         const d = cmDev();
         const custom = !!(d && !CM_TYPES[d.type]);
         const tog = $("bemfaToggle"), box = $("bemfaBox"), lock = $("bemfaLocked"), hint = $("bemfaHint");
-        const uidRow = $("bemfaUid") ? $("bemfaUid").closest(".pair-2") : null;
         if (tog) tog.hidden = custom;
-        if (uidRow) uidRow.hidden = custom;
         if (box) box.hidden = custom ? false : !state.bemfa.on;
         if (lock) lock.hidden = true;
         if (hint) hint.textContent = custom ? "模板内主题" : "手机远程";
