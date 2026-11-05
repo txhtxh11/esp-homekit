@@ -318,6 +318,7 @@
     .info-box b { color: var(--accent); }
 
     /* 固件来源：一行三张按钮卡（本地/直链的输入已并入下面的三段卡） */
+    #flashPick { display: flex; flex-direction: column; gap: 8px; }
     .src-row { display: flex; gap: 8px; }
     .src-btn {
         flex: 1 1 0; min-width: 0; height: 60px;
@@ -401,7 +402,7 @@
     .cs-btn.main { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
     .cs-btn.danger { background: rgba(var(--danger-rgb), .15); border-color: var(--danger-line); color: var(--danger); }
     /* 主操作：三张并排卡片（和上面的来源卡同款、等高）—— 固件 / 清空 / 烧录 */
-    .cs-bar { display: flex; gap: 8px; margin-top: 10px; }
+    .cs-bar { display: flex; gap: 8px; }
     .cs-bar > * {
         flex: 1 1 0; min-width: 0; height: 60px; padding: 0 12px;
         display: flex; align-items: center; justify-content: center;
@@ -3834,7 +3835,9 @@ function parseTplTopics(yaml) {
         act.textContent = running ? "取消" : "关闭";
         act.className = "cs-act" + (running ? " danger" : "");
         act.onclick = running ? (onCancel || closeCompile) : closeCompile;
-        $("compileMsg").onclick = phase === "done" ? downloadCompiled : null;
+        $("compileMsg").onclick = phase === "done"
+            ? () => { flashState.binOpen = !flashState.binOpen; renderFlashPick(); }
+            : null;
         paintBinPick();
     }
 
@@ -3879,7 +3882,7 @@ function parseTplTopics(yaml) {
     function paintBinPick() {
         const box = $("csBins");
         if (!box) return;
-        box.hidden = !(flashState.compiled && flashState.mode === "auto");
+        box.hidden = !(flashState.compiled && flashState.mode === "auto" && flashState.binOpen);
         if (box.hidden) return;
         Array.prototype.forEach.call(box.querySelectorAll(".cs-bin"), b => {
             const k = b.dataset.kind;
@@ -4035,6 +4038,7 @@ function parseTplTopics(yaml) {
         flashState.otaTooBig = res.blob.size > otaMax;
         flashState.kindBlobs = {};                       // 新产物，缓存作废
         flashState.binKind = state.chip === "esp32" ? "factory" : "bin";
+        flashState.binOpen = false;   // 编译完先收起，点「已编译成功」再展开
         paintBinPick();
         flashState.otaMax = otaMax;
         // 状态条若还开着（比如在烧录卡片里重新编译过），同步刷新它的完成文案
@@ -4547,9 +4551,17 @@ function parseTplTopics(yaml) {
         applyGo();
         pick.appendChild(bar);
 
+        // 「已编译成功」卡：点一下展开/收起下面的 bin 卡（不再直接下载）
+        const msgBtn = $("compileMsg");
+        if (msgBtn) {
+            msgBtn.onclick = (flashState.mode === "auto" && flashState.compiled && compiledFresh())
+                ? () => { flashState.binOpen = !flashState.binOpen; renderFlashPick(); }
+                : null;
+        }
+
         // 有了固件才谈得上推送：OTA 行放在「开始编译 / 开始烧录」下面
         // 编译成功后：三张 bin 卡 → 选中后出「下载 / 烧录 / OTA」→ OTA 再展开 IP 行
-        if (flashState.mode === "auto" && flashState.compiled && compiledFresh()) {
+        if (flashState.mode === "auto" && flashState.compiled && compiledFresh() && flashState.binOpen) {
             const bins = $("csBins");
             if (bins) { pick.appendChild(bins); paintBinPick(); }
 
