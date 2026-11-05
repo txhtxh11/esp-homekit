@@ -1570,8 +1570,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             dev.name = t.name + " " + n;
             // 输出/信号方向与 WiFi 指示灯：反向输出开关关闭=常规、打开=反向；
             // 门磁/人体/按键类信号默认低电平触发（保持反向）
-            dev.io = { inverted: t.kind === "binary", boot: "off", statusLed: false,
-                       blinkReset: false, blinkSec: 30 };
+            dev.io = { inverted: t.kind === "binary", boot: "off", statusLed: false };
             if (type === "button") {
                 dev.io.longReset = true; dev.io.longResetSec = 5;    // 长按重置配对（默认开）
                 dev.io.factoryReset = false; dev.io.factoryResetSec = 10;  // 长按恢复出厂（默认关）
@@ -2100,26 +2099,6 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 v => { dev.io.statusLed = v; renderDetailGeneric(dev); });
             ioSection.appendChild(ledRow);
 
-            // 重置配对成功后让这盏灯慢闪几十秒，提示「已经重置，等你重新配对」
-            if (dev.io.statusLed) {
-                if (typeof dev.io.blinkReset !== "boolean") dev.io.blinkReset = false;
-                const blRow = document.createElement("div"); blRow.className = "form-row";
-                blRow.innerHTML = '<label class="form-label">重置后慢闪</label>';
-                toggleCards(blRow, dev.io.blinkReset, { offSub: "不启用", onSub: "提示已重置" }, v => {
-                    dev.io.blinkReset = v;
-                    renderDetailGeneric(dev);
-                });
-                ioSection.appendChild(blRow);
-                if (dev.io.blinkReset) {
-                    const bsRow = document.createElement("div"); bsRow.className = "form-row";
-                    bsRow.innerHTML = '<label class="form-label">慢闪时长（秒）</label><input class="form-input" type="number" id="blSec" min="5" max="600" step="5" value="' + (parseInt(dev.io.blinkSec, 10) || 30) + '">';
-                    ioSection.appendChild(bsRow);
-                    bsRow.querySelector("#blSec").addEventListener("input", e => {
-                        const v = parseInt(e.target.value, 10);
-                        dev.io.blinkSec = isNaN(v) ? 30 : Math.min(Math.max(v, 5), 600);
-                    });
-                }
-            }
 
             // 只做指示灯的开关（如板载蓝灯/红灯）：照常出现在设备网页，但不进家庭 App
             if (typeof dev.io.localOnly !== "boolean") dev.io.localOnly = false;
@@ -3463,7 +3442,6 @@ function parseTplTopics(yaml) {
             const hkLines = state.chip === "esp8266"
                 ? ["- homekit.reset_storage:", "    id: my_hk"]
                 : ["- lambda: 'ESP.restart();'"];
-            if (hkBlinkLine) hkLines.push(hkBlinkLine);   // 重置成功后让红灯慢闪提示
             if (hkLong && facLong) {
                 // 两个都要：出厂到点即触发；配对必须「按满 N 秒后松手」才触发，避免抢先
                 multiItems.push({
@@ -3495,13 +3473,6 @@ function parseTplTopics(yaml) {
                 });
             }
         };
-
-        // 「重置后慢闪」：找勾了网络状态指示 + 慢闪的那盏灯，生成一行启动语句
-        const blinkDev = relays.find(d => d.io && d.io.statusLed && d.io.blinkReset);
-        const blinkSec = blinkDev ? Math.min(Math.max(parseInt(blinkDev.io.blinkSec, 10) || 30, 5), 600) : 0;
-        const hkBlinkLine = blinkDev
-            ? "- lambda: id(hk_blink_until) = millis() + " + (blinkSec * 1000) + "UL;"
-            : "";
 
         const switchBlocks = [];
         relays.forEach(dev => {
@@ -3677,7 +3648,6 @@ function parseTplTopics(yaml) {
             G.push('    icon: "mdi:restart-alert"');
             G.push("    on_press:");
             G.push("      - homekit.reset_storage: my_hk");
-            if (hkBlinkLine) G.push("      " + hkBlinkLine);
             G.push("");
             G.push("text_sensor:");
             G.push("  - platform: template");
@@ -3692,22 +3662,6 @@ function parseTplTopics(yaml) {
         } else {
             G.push("# HomeKit 重置与配对码需要 api / 网页才有入口，当前两者都关，已省略");
             G.push("# 要重置配对：擦除 flash 后重新烧录（配对信息存在 NVS 里）");
-            G.push("");
-        }
-        if (blinkDev) {
-            G.push("");
-            G.push("# 重置后红灯慢闪提示：时间到自动回到联网状态指示");
-            G.push("globals:");
-            G.push("  - id: hk_blink_until");
-            G.push("    type: uint32_t");
-            G.push("    restore_value: no");
-            G.push("    initial_value: '0'");
-            G.push("");
-            G.push("interval:");
-            G.push("  - interval: 600ms");
-            G.push("    then:");
-            G.push("      - lambda: |-");
-            G.push("          if (millis() < id(hk_blink_until)) id(" + blinkDev.uid + ").toggle();");
             G.push("");
         }
         G.push("# ========== 配置结束 ==========");
