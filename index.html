@@ -664,8 +664,9 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
 
         <section>
             <div class="section-title"><h2>设备名</h2><span>自动加 MAC 后缀</span></div>
-            <div class="pair-2">
+            <div class="triple">
                 <input class="pair-input" id="nodeNameInput" placeholder="设备名·如 orvibo" spellcheck="false" aria-label="设备名">
+                <input class="pair-input" id="macSuffixInput" placeholder="MAC 后缀·49ff8e" spellcheck="false" aria-label="MAC 后缀">
                 <input class="pair-input" id="friendlyInput" placeholder="显示名·留空同设备名" spellcheck="false" aria-label="显示名">
             </div>
         </section>
@@ -1010,7 +1011,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 board: state.board, customBoard: state.customBoard,
                 flash: state.flash, customFlash: state.customFlash,
                 wifi: state.wifi, hkCode: state.hkCode,
-                nodeName: state.nodeName, friendlyName: state.friendlyName,
+                nodeName: state.nodeName, friendlyName: state.friendlyName, macSuffix: state.macSuffix,
                 bemfa: state.bemfa, logLevel: state.logLevel,
                 seq: state.seq,
                 devices: state.devices.map(d => ({
@@ -2174,9 +2175,36 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             state.bemfa.uid = typeof o.uid === "string" ? o.uid : "";
         } catch (e) { }
     }
-    function bemfaTopic(uid, suffix) {
-        // 巴法主题只接受字母和数字（下划线会被后台拒绝），且必须以后三位类型码结尾
-        return BEMFA_PREFIX + String(uid || "").replace(/[^A-Za-z0-9]/g, "") + suffix;
+    // 主题名固定跟「设备名 + MAC 后缀」走（就是 ESPHome 里那个自动加后缀的名字），
+    // 同一个设备无论怎么重加卡片，主题都不会变；同类型的第 2 个实体起加序号区分。
+    function bmSan(s) { return String(s || "").replace(/[^A-Za-z0-9]/g, ""); }
+    function bmBaseName() { return bmSan(state.nodeName || "esp_homekit_device") + bmSan(state.macSuffix || ""); }
+    function bemfaTopic(n, suffix) {
+        // 巴法主题只接受字母和数字，且必须以后三位类型码结尾
+        return BEMFA_PREFIX + bmBaseName() + (n > 1 ? String(n) : "") + suffix;
+    }
+    // 取某个设备某类型的主题（同类型多个时按 idx 取第几个）
+    function bmTopicOf(dev, suffix, idx) {
+        const hit = bemfaEntityList().filter(e => e.suffix === suffix && e.dev === dev)[idx || 0];
+        return hit ? hit.topic : bemfaTopic(1, suffix);
+    }
+    // 设备 → 巴法主题的映射表（UI 卡片与生成的 YAML 共用同一份，保证对得上）
+    function bemfaEntityList() {
+        const out = [], cnt = { "006": 0, "004": 0 };
+        const push = (dev, suffix, kind, label) => {
+            cnt[suffix] += 1;
+            out.push({ dev: dev, kind: kind, suffix: suffix, label: label, topic: bemfaTopic(cnt[suffix], suffix) });
+        };
+        state.devices.forEach(d => {
+            if (d.io && d.io.bemfa === false) return;   // 手动删掉的项
+            if (d.type === "cm_w1") {
+                push(d, "006", "switch", d.name + " 总控");
+                push(d, "006", "switch", d.name + " 分控");
+            } else if (d.type === "relay") push(d, "006", "switch", d.name);
+            else if (d.type === "dht") push(d, "004", "sensor", d.name);
+            else if (d.type === "bh1750") push(d, "004", "sensor", d.name);
+        });
+        return out;
     }
     // 整机模板：从生成的 YAML 里解析出所有巴法云主题（on_message 与 /set 发布都算）
 function parseTplTopics(yaml) {
@@ -2199,19 +2227,7 @@ function parseTplTopics(yaml) {
 }
 // 能映射到巴法 App 的设备：继电器→开关，温湿度/光照→传感器，CMPOWER 整机→总控/分控
     function bemfaEntries() {
-        const out = [];
-        state.devices.forEach(d => {
-            if (d.io && d.io.bemfa === false) return;   // 手动删掉的项
-            if (d.type === "cm_w1") {
-                out.push({ topic: bemfaTopic("master", "006"), name: d.name + " 总控", kind: "switch", dev: d });
-                out.push({ topic: bemfaTopic("slave", "006"), name: d.name + " 分控", kind: "switch", dev: d });
-            } else if (TYPES[d.type]) {
-                if (d.type === "relay") out.push({ topic: bemfaTopic(d.uid, "006"), name: d.name, kind: "switch", dev: d });
-                else if (d.type === "dht") out.push({ topic: bemfaTopic(d.uid, "004"), name: d.name, kind: "sensor", dev: d });
-                else if (d.type === "bh1750") out.push({ topic: bemfaTopic(d.uid, "004"), name: d.name, kind: "sensor", dev: d });
-            }
-        });
-        return out;
+        return bemfaEntityList().map(e => ({ topic: e.topic, name: e.label, kind: e.kind, dev: e.dev }));
     }
     function renderBemfa() {
         const box = $("bemfaToggle");
@@ -2279,7 +2295,7 @@ function parseTplTopics(yaml) {
             b.innerHTML = '<span class="name">' + esc(e.topic) + '</span>' +
                 '<span class="sub">' + esc(e.name + " · " + (e.kind === "switch" ? "开关" : "传感器")) + '</span>';
             // 右上角 ✕：把这个主题（连同生成的 mqtt 代码）去掉
-            if (e.dev && e.topic !== bemfaTopic("master", "006") && e.topic !== bemfaTopic("slave", "006")) {
+            if (e.dev && e.dev.type !== "cm_w1") {
                 const del = document.createElement("span");
                 del.className = "bm-del";
                 del.textContent = "✕";
@@ -2466,8 +2482,8 @@ function parseTplTopics(yaml) {
         if (cmw1) {
             const c = cmw1.cfg;
             const bmBase = BEMFA_PREFIX;   // 巴法云话题前缀（总控/分控共用）
-    const bmMaster = bemfaTopic("master", "006");   // 例：ehmaster006
-    const bmSlave = bemfaTopic("slave", "006");     // 例：ehslave006
+    const bmMaster = bmTopicOf(cmw1, "006", 0);   // 例：ehmaster006
+    const bmSlave = bmTopicOf(cmw1, "006", 1);     // 例：ehslave006
             const L = [];
             L.push("# ============================================================");
             L.push("# ESPHome + HomeKit + SY7T609 配置（CMPOWER W1）");
@@ -3005,10 +3021,10 @@ function parseTplTopics(yaml) {
            on_message 订阅裸话题执行动作，mqtt.publish 往 <topic>/set 主动回传状态/数值。 */
         const bemfaOn = !!state.bemfa.on;
         const bmOff = d => !!(d.io && d.io.bemfa === false);   // 巴法云里被删掉的项
-        const bmSw = bemfaOn ? relays.filter(d => !bmOff(d)).map(d => ({ d: d, t: bemfaTopic(d.uid, "006") })) : [];
+        const bmSw = bemfaOn ? relays.filter(d => !bmOff(d)).map(d => ({ d: d, t: bmTopicOf(d, "006") })) : [];
         const bmSens = bemfaOn
-            ? dhts.filter(d => !bmOff(d)).map(d => ({ d: d, t: bemfaTopic(d.uid, "004"), kind: "dht" }))
-                .concat(bh1750s.filter(d => !bmOff(d)).map(d => ({ d: d, t: bemfaTopic(d.uid, "004"), kind: "lux" })))
+            ? dhts.filter(d => !bmOff(d)).map(d => ({ d: d, t: bmTopicOf(d, "004"), kind: "dht" }))
+                .concat(bh1750s.filter(d => !bmOff(d)).map(d => ({ d: d, t: bmTopicOf(d, "004"), kind: "lux" })))
             : [];
         if (bemfaOn) {
             const bmUid = state.bemfa.uid || "在这里填巴法云私钥UID";
@@ -3134,7 +3150,7 @@ function parseTplTopics(yaml) {
             const addEv = (name, line) => { (evs[name] = evs[name] || []).push(line); };
             dev.actions.forEach(act => addEv(act.event, "- " + (OP_YAML[act.op] || "switch.toggle") + ": " + act.target));
             if (bemfaOn && !(dev.io && dev.io.bemfa === false)) {
-                const bt = bemfaTopic(dev.uid, "006");
+                const bt = bmTopicOf(dev, "006");
                 addEv("on_turn_on", "- mqtt.publish:");
                 addEv("on_turn_on", "    topic: " + bt + "/set");
                 addEv("on_turn_on", '    payload: "on"');
@@ -4844,7 +4860,7 @@ function parseTplTopics(yaml) {
     $("customBoardInput").addEventListener("input", e => { state.customBoard[state.chip] = e.target.value.trim(); scheduleSave(); });
     $("customFlashInput").addEventListener("input", e => { state.customFlash[state.chip] = e.target.value.trim(); scheduleSave(); });
     $("nodeNameInput").addEventListener("input", e => { state.nodeName = e.target.value.trim(); scheduleSave(); });
-    $("friendlyInput").addEventListener("input", e => { state.friendlyName = e.target.value; scheduleSave(); });
+    $("macSuffixInput").addEventListener("input", e => { state.macSuffix = e.target.value.replace(/[^0-9a-zA-Z]/g, "").toLowerCase(); scheduleSave(); });
     $("wifiSsid").addEventListener("input", e => { state.wifi.ssid = e.target.value.trim(); scheduleSave(); });
     $("wifiPass").addEventListener("input", e => { state.wifi.pass = e.target.value; scheduleSave(); });
     // 「扫描」：用摄像头扫手机/路由器上分享 WiFi 的二维码（WIFI:T:WPA;S:名称;P:密码;;），自动填进上面两格
