@@ -2269,16 +2269,16 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     }
     // 主题名固定跟「设备名 + MAC 后缀」走（就是 ESPHome 里那个自动加后缀的名字），
     // 同一个设备无论怎么重加卡片，主题都不会变；同类型的第 2 个实体起加序号区分。
-    function bmSan(s) { return String(s || "").replace(/[^A-Za-z0-9_]/g, ""); }   // 巴法只允许字母/数字/下划线
+    function bmSan(s) { return String(s || "").replace(/[^A-Za-z0-9]/g, ""); }   // 巴法后台只收字母和数字
     // 主题前缀就是设备名（ESPHome 会在后面自动接 MAC 后缀，那是运行时的事，这里只管用户填的名字）
     function bmBaseName() {
         const n = bmSan(state.nodeName || "esp_homekit_device");
         const m = bmSan(state.macSuffix || "");
-        return m ? n + "_" + m : n;
+        return m ? n + m : n;
     }
     function bemfaTopic(n, suffix) {
         // 巴法主题允许字母/数字/下划线，且必须以后三位类型码结尾
-        return BEMFA_PREFIX + bmBaseName() + "_" + n + suffix;   // orvibo_1006 / orvibo_2006 / orvibo_1004
+        return BEMFA_PREFIX + bmBaseName() + n + suffix;   // orvibo49ff8e1006（只含字母数字，巴法才收）
     }
     // 取某个设备某类型的主题（同类型多个时按 idx 取第几个）
     function bmTopicOf(dev, suffix, idx) {
