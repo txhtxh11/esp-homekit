@@ -332,12 +332,12 @@
     /* 巴法云主题卡：卡片本身就是复制按钮，点一下变「已复制」 */
     /* 编译完成后的三个 bin 下载卡 */
     .cs-bins { display: flex; gap: 8px; padding: 0 12px 10px; }
-    .cs-bin { flex: 1 1 0; height: 34px; border-radius: 9px; border: 1px solid var(--line);
-        background: var(--panel2); color: var(--fg); font-size: 12px; font-weight: 600;
-        font-family: inherit; letter-spacing: .3px; }
-    .cs-bin:active { background: var(--panel3, #333); }
-    .cs-bin.on { border-color: var(--accent); color: var(--accent); font-weight: 700; }
-    .cs-bin { font-family: ui-monospace, monospace; letter-spacing: 0; }
+    .cs-bin { flex: 1 1 0; min-width: 0; height: 60px; border-radius: 0;
+        border: 1.5px solid var(--line); background: var(--panel); color: var(--text-sub);
+        font-size: 14px; font-weight: 600; font-family: inherit; transition: all .15s;
+        text-align: center; white-space: nowrap; }
+    .cs-bin:active { transform: scale(.97); }
+    .cs-bin.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
     /* 烧录来源行的 OTA 推送 */
     .bm-card { position: relative; }
     .bm-card .name { font-family: ui-monospace, monospace; font-size: 12.5px; letter-spacing: -.2px; padding-right: 22px; }
