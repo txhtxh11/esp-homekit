@@ -300,6 +300,11 @@
     /* 配置代码可编辑：textarea 与原来的 pre 同款外观 */
     .sheet textarea#codeOut { margin: 0 14px; flex: 1; min-height: 180px; max-height: 56vh; max-height: 56dvh; overflow: auto; background: var(--code-bg); border: 1px solid var(--line); border-radius: 0; padding: 14px; font-size: 12px; line-height: 1.65; font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--code-text); white-space: pre; resize: none; outline: none; tab-size: 2; -webkit-overflow-scrolling: touch; }
     .sheet textarea#codeOut:focus { border-color: var(--accent); }
+    /* 配置弹层：占满整屏，代码框吃满剩余高度 */
+    #codeSheet { top: 0; height: 100vh; height: 100dvh; max-height: 100dvh; }
+    #codeSheet .sheet-body { display: flex; flex-direction: column; padding-bottom: 0; }
+    #codeSheet .sheet-hint { display: inline; }
+    #codeSheet textarea#codeOut { max-height: none; height: auto; flex: 1 1 auto; min-height: 0; margin-bottom: 0; }
 
     .info-box { padding: 11px 13px; background: rgba(var(--accent-rgb), .06); border: 1px dashed rgba(var(--accent-rgb), .3); border-radius: 0; font-size: 12.5px; color: var(--text-sub); line-height: 1.55; margin-bottom: 14px; }
 
