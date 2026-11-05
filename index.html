@@ -4424,6 +4424,7 @@ function parseTplTopics(yaml) {
             let label = "开始烧录", off = false, act = flashNow;
             if (flashState.mode === "auto") {
                 if (!compiledFresh()) { label = flashState.err ? "重试编译" : "开始编译"; act = smartCompile; }
+                else { label = "重新编译"; act = smartCompile; }
             } else if (flashState.mode === "file") {
                 if (!flashState.file) off = true;
             } else if (!/^https?:\/\/\S+/i.test((flashState.url || "").trim())) {
@@ -4434,10 +4435,7 @@ function parseTplTopics(yaml) {
         // 左段文案：编译产物 / 本地文件 / 直链文件名
         const fwSummary = () => {
             if (flashState.mode === "auto") {
-                if (flashState.compiled && compiledFresh()) {
-                    const meta = BIN_KINDS.find(x => x[0] === (flashState.binKind || "bin"));
-                    return meta ? meta[1] : "firmware.bin";
-                }
+                if (flashState.compiled && compiledFresh()) return "已编译成功";
                 return flashState.err ? "编译失败" : "未编译";
             }
             if (flashState.mode === "file") {
@@ -4534,8 +4532,27 @@ function parseTplTopics(yaml) {
         pick.appendChild(bar);
 
         // 有了固件才谈得上推送：OTA 行放在「开始编译 / 开始烧录」下面
-        pick.appendChild(otaRow);
-        paintBinPick();
+        // 编译成功后：三张 bin 卡 → 选中后出「下载 / 烧录 / OTA」→ OTA 再展开 IP 行
+        if (flashState.mode === "auto" && flashState.compiled && compiledFresh()) {
+            const bins = $("csBins");
+            if (bins) { pick.appendChild(bins); paintBinPick(); }
+
+            const acts = document.createElement("div");
+            acts.className = "triple";
+            acts.style.padding = "0 12px 10px";
+            [["⬇", "下载", () => downloadCompiled()],
+             ["⚡", "烧录", () => flashNow()],
+             ["📡", "OTA", () => { flashState.otaOpen = !flashState.otaOpen; renderFlashPick(); }]].forEach(([ico, label, fn]) => {
+                const b = document.createElement("button");
+                b.type = "button";
+                b.className = "pair-btn" + (label === "OTA" && flashState.otaOpen ? " on" : "");
+                b.textContent = label;
+                b.addEventListener("click", fn);
+                acts.appendChild(b);
+            });
+            pick.appendChild(acts);
+            if (flashState.otaOpen) pick.appendChild(otaRow);
+        }
     }
 
     // 「擦除」工具卡：选中即整卡高亮（不改文案，不加 ✓）
