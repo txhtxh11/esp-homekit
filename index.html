@@ -1374,6 +1374,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 if (ex) openDetail(ex.uid); else addDevice(def.id);
             }]];
             if (tpl) {
+                items.push(["⇩", "反填", () => { hideSheets(); tplReverseApply(def); }]);
                 items.push(["✎", "编辑", () => { tplBackFn = null; hideSheets(); showTplEditor(tpl); }]);
                 items.push(["🗑", "删除", () => { hideSheets(); deleteTpl(tpl.id); }]);
             }
@@ -2467,6 +2468,160 @@ function parseTplTopics(yaml) {
             mq.push('            else if (x == "off") { id(' + t.id + ').turn_off(); }');
         });
         return out.replace(/\s*$/, "") + "\n" + mq.join("\n") + "\n";
+    }
+
+
+    /* ===== 整机模板「反填」：把模板 YAML 解析回上方的卡片与设备卡 ===== */
+    function tplSection(yaml, key) {
+        const lines = String(yaml || "").replace(/\r/g, "").split("\n");
+        const start = lines.findIndex(l => new RegExp("^" + key + ":\\s*$").test(l));
+        if (start < 0) return [];
+        const out = [];
+        for (let i = start + 1; i < lines.length; i++) {
+            if (/^[A-Za-z_]/.test(lines[i])) break;
+            out.push(lines[i]);
+        }
+        return out;
+    }
+    function tplChunks(lines) {
+        const out = [];
+        let cur = null;
+        lines.forEach(l => {
+            if (/^\s{2}- /.test(l)) { if (cur) out.push(cur); cur = [l]; }
+            else if (cur) cur.push(l);
+        });
+        if (cur) out.push(cur);
+        return out;
+    }
+    function tplPin(text) {
+        const m = String(text || "").match(/GPIO\s*(\d+)/i);
+        return m ? "GPIO" + m[1] : "";
+    }
+    function tplParse(yaml) {
+        const r = { name: "", friendly: "", board: "", chip: "esp8266", flash: "", ssid: "", pass: "", hk: "", sw: [], bs: [], sens: [] };
+        const esp = tplSection(yaml, "esphome");
+        esp.forEach(l => {
+            let m = l.match(/^\s+name:\s*"([^"]*)"/); if (m) r.name = m[1];
+            m = l.match(/^\s+friendly_name:\s*"([^"]*)"/); if (m) r.friendly = m[1];
+            m = l.match(/ldscript:\s*\S*flash\.(\d)m/i); if (m) r.flash = m[1] + "MB";
+        });
+        const b32 = tplSection(yaml, "esp32"), b8266 = tplSection(yaml, "esp8266");
+        if (b32.length) r.chip = "esp32";
+        b32.concat(b8266).forEach(l => {
+            const m = l.match(/^\s+board:\s*(\S+)/);
+            if (m && !r.board) r.board = m[1];
+        });
+        tplSection(yaml, "wifi").forEach(l => {
+            let m = l.match(/^\s{2}ssid:\s*"([^"]*)"/); if (m && !r.ssid) r.ssid = m[1];
+            m = l.match(/^\s{2}password:\s*"([^"]*)"/); if (m && !r.pass) r.pass = m[1];
+        });
+        tplSection(yaml, "homekit").forEach(l => {
+            const m = l.match(/setup_code:\s*"([^"]+)"/);
+            if (m) r.hk = m[1];
+        });
+        tplChunks(tplSection(yaml, "switch")).forEach(chunk => {
+            const text = chunk.join("\n");
+            let id = "", name = "";
+            chunk.forEach(l => {
+                let m = l.match(/^\s{4}id:\s*([A-Za-z0-9_]+)/); if (m) id = m[1];
+                m = l.match(/^\s{4}name:\s*"?([^"\n]*)"?/); if (m) name = m[1].trim();
+            });
+            const pin = tplPin(text);
+            if (!pin) return;
+            const acts = [];
+            let ev = "on_turn_on";
+            chunk.forEach(l => {
+                const e = l.match(/^\s{4}(on_turn_on|on_turn_off|on_press|on_release):/);
+                if (e) ev = e[1];
+                const a = l.match(/(switch\.turn_on|switch\.turn_off|switch\.toggle):\s*([A-Za-z0-9_]+)/);
+                if (a) acts.push({ event: ev, yaml: a[1], target: a[2] });
+            });
+            r.sw.push({ id: id, name: name || id, pin: pin, on: /restore_mode:\s*ALWAYS_ON/.test(text), inv: /inverted:\s*true/.test(text), acts: acts });
+        });
+        tplChunks(tplSection(yaml, "binary_sensor")).forEach(chunk => {
+            const text = chunk.join("\n");
+            if (!/platform:\s*gpio/.test(text)) return;
+            let id = "", name = "";
+            chunk.forEach(l => {
+                let m = l.match(/^\s{4}id:\s*([A-Za-z0-9_]+)/); if (m) id = m[1];
+                m = l.match(/^\s{4}name:\s*"?([^"\n]*)"?/); if (m) name = m[1].trim();
+            });
+            const pin = tplPin(text);
+            if (!pin) return;
+            const acts = [];
+            let ev = "on_press", op = "toggle";
+            chunk.forEach(l => {
+                const e = l.match(/^\s{4}(on_click|on_press|on_release|on_multi_click):/);
+                if (e) ev = e[1] === "on_click" ? "on_press" : e[1];
+                const a = l.match(/(switch\.turn_on|switch\.turn_off|switch\.toggle):\s*([A-Za-z0-9_]+)/);
+                if (a) acts.push({ event: ev, yaml: a[1], target: a[2] });
+            });
+            const kind = /device_class:\s*(motion|door)/.exec(text);
+            r.bs.push({ id: id, name: name || id, pin: pin, inv: /inverted:\s*true/.test(text), acts: acts, kind: kind ? kind[1] : "button" });
+        });
+        tplChunks(tplSection(yaml, "sensor")).forEach(chunk => {
+            const text = chunk.join("\n");
+            const plat = /platform:\s*(dht|bh1750)/.exec(text);
+            if (!plat) return;
+            let name = "";
+            chunk.forEach(l => { const m = l.match(/^\s{4}name:\s*"?([^"\n]*)"?/); if (m) name = m[1].trim(); });
+            r.sens.push({ type: plat[1], name: name || plat[1], pin: tplPin(text) });
+        });
+        return r;
+    }
+    function tplReverseApply(def) {
+        let r;
+        try { r = tplParse(buildTplYaml(Object.assign({}, def, { type: def.id || def.type }))); } catch (e) { showToast("解析模板失败: " + e.message); return; }
+        if (!r.sw.length && !r.bs.length && !r.sens.length) { showToast("模板里没解析到可用的设备"); return; }
+        const others = state.devices.filter(d => d.type !== def.id);
+        if (others.length && !confirm("反填会清空现有 " + others.length + " 个设备卡，并按模板重建，继续？")) return;
+        state.devices = [];
+        state.seq = {};
+        if (r.chip && state.chip !== r.chip) { state.chip = r.chip; }
+        if (r.board) { state.board[state.chip] = "custom"; state.customBoard[state.chip] = r.board; }
+        if (r.flash) { state.flash[state.chip] = r.flash; }
+        if (r.name) state.nodeName = r.name;
+        if (r.friendly) state.friendlyName = r.friendly;
+        if (r.ssid) state.wifi.ssid = r.ssid;
+        if (r.pass) state.wifi.pass = r.pass;
+        if (r.hk) state.hkCode = r.hk;
+        const map = {};
+        const mk = (type, name) => ({ uid: nextUid(type), type: type, name: name, pinOverrides: {}, actions: [],
+            io: { inverted: false, boot: "off", statusLed: false } });
+        r.sw.forEach(s => {
+            const d = mk("relay", s.name);
+            d.pinOverrides = { pin: s.pin };
+            d.io.boot = s.on ? "on" : "off";
+            d.io.inverted = s.inv;
+            state.devices.push(d);
+            if (s.id) map[s.id] = d.uid;
+            s._dev = d;
+        });
+        r.sens.forEach(s => {
+            const d = mk(s.type === "dht" ? "dht" : "bh1750", s.name);
+            if (s.pin) d.pinOverrides = { pin: s.pin };
+            state.devices.push(d);
+        });
+        r.bs.forEach(b => {
+            const type = b.kind === "motion" ? "pir" : (b.kind === "door" ? "door" : "button");
+            const d = mk(type, b.name);
+            d.pinOverrides = { pin: b.pin };
+            d.io.inverted = b.inv;
+            state.devices.push(d);
+            if (b.id) map[b.id] = d.uid;
+            b._dev = d;
+        });
+        const opOf = y => y === "switch.turn_on" ? "turn_on" : (y === "switch.turn_off" ? "turn_off" : "toggle");
+        r.sw.forEach(s => s.acts.forEach(a => {
+            if (!map[a.target] || !s._dev) return;
+            s._dev.actions.push({ event: a.event, op: opOf(a.yaml), target: map[a.target] });
+        }));
+        r.bs.forEach(b => b.acts.forEach(a => {
+            if (!map[a.target] || !b._dev) return;
+            b._dev.actions.push({ event: a.event, op: opOf(a.yaml), target: map[a.target] });
+        }));
+        renderChips(); renderTypes(); renderDevices(); scheduleSave();
+        showToast("已按模板填充 " + state.devices.length + " 个设备");
     }
 
     function buildYaml() {
@@ -4839,6 +4994,7 @@ function parseTplTopics(yaml) {
     window.__debug = {
         addDevice: addDevice,
         buildYaml: buildYaml,
+        reverseTpl: tplReverseApply,
         getState: () => state,
         setChip: chip => { state.chip = chip; },
         randomHkCode: randomHkCode,
