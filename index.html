@@ -2620,6 +2620,14 @@ function parseTplTopics(yaml) {
             if (!map[a.target] || !b._dev) return;
             b._dev.actions.push({ event: a.event, op: opOf(a.yaml), target: map[a.target] });
         }));
+        // 同步到上方各输入框（否则 state 变了、界面还显示旧值）
+        $("nodeNameInput").value = state.nodeName || "";
+        $("friendlyInput").value = state.friendlyName || "";
+        $("wifiSsid").value = state.wifi.ssid || "";
+        $("wifiPass").value = state.wifi.pass || "";
+        $("hkCodeInput").value = state.hkCode || "";
+        $("customBoardInput").value = state.customBoard[state.chip] || "";
+        $("customFlashInput").value = state.customFlash[state.chip] || "";
         renderChips(); renderTypes(); renderDevices(); scheduleSave();
         showToast("已按模板填充 " + state.devices.length + " 个设备");
     }
