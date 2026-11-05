@@ -707,7 +707,6 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
 
         <section id="bemfaSection">
             <div class="section-title"><h2>巴法云</h2><span id="bemfaHint">手机远程</span></div>
-            <div id="bemfaToggle"></div>
             <div id="bemfaBox" hidden>
                 <div class="pair-2" style="margin-top:10px;margin-bottom:10px"><input class="pair-input" id="bemfaUid" placeholder="巴法云私钥 UID" autocomplete="off" spellcheck="false" aria-label="巴法云私钥 UID"></div>
                 <div class="grid" id="bemfaTopics"></div>
@@ -1285,7 +1284,10 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
 
     // FLASH 大小卡片：选定即高亮，随板型联动刷新；末位「自定义」只填 MB 数
     // 功能模块开关：某个模块关掉后，生成的 YAML 里对应段落直接不出现
-    function feat(k) { return !(state.features && state.features[k] === false); }
+    function feat(k) {
+        if (k === "bemfa") return !!state.bemfa.on;
+        return !(state.features && state.features[k] === false);
+    }
     const FEATURE_LIST = [
         ["web", "Web 网页", "设备网页面板"],
         ["api", "API", "接入 Home Assistant"],
@@ -1293,7 +1295,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         ["ota", "OTA", "空中升级"],
         ["restore", "状态记忆", "断电记住开关"],
         ["weblog", "网页日志", "在线看设备输出"],
-        ["homekit", "HomeKit", "苹果家庭直连"]
+        ["homekit", "HomeKit", "苹果家庭直连"],
+        ["bemfa", "巴法云", "手机远程 MQTT"]
     ];
     let featOpen = false;
     function renderFeatures() {
@@ -1320,6 +1323,13 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             b.className = "card board" + (feat(k) ? " on" : "");
             b.innerHTML = '<span class="name">' + name + '</span><span class="sub">' + (feat(k) ? "开 · " + sub : "关") + '</span>';
             b.addEventListener("click", () => {
+                if (k === "bemfa") {           // 巴法云有自己的开关与二级配置
+                    state.bemfa.on = !state.bemfa.on;
+                    bemfaSave();
+                    renderBemfa();
+                    renderFeatures();
+                    return;
+                }
                 state.features[k] = !feat(k);
                 scheduleSave();
                 renderFeatures();
@@ -1578,8 +1588,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     function paintBemfaSection() {
         const d = cmDev();
         const custom = !!(d && !CM_TYPES[d.type]);
-        const tog = $("bemfaToggle"), box = $("bemfaBox"), lock = $("bemfaLocked"), hint = $("bemfaHint");
-        if (tog) tog.hidden = custom;
+        const sec = $("bemfaSection"), box = $("bemfaBox"), lock = $("bemfaLocked"), hint = $("bemfaHint");
+        if (sec) sec.hidden = !(custom || state.bemfa.on);   // 二级配置：只有开着或模板模式才出现
         if (box) box.hidden = custom ? false : !state.bemfa.on;
         if (lock) lock.hidden = true;
         if (hint) hint.textContent = custom ? "模板内主题" : "手机远程";
@@ -2304,18 +2314,12 @@ function parseTplTopics(yaml) {
         return bemfaEntityList().map(e => ({ topic: e.topic, name: e.label, kind: e.kind, dev: e.dev }));
     }
     function renderBemfa() {
-        const box = $("bemfaToggle");
+        const box = $("bemfaBox");
         if (!box) return;
-        box.innerHTML = "";
-        toggleCards(box, state.bemfa.on, { offSub: "只用 HomeKit", onSub: "手机远程" }, v => {
-            state.bemfa.on = v;
-            bemfaSave();
-            renderBemfa();
-        });
-        $("bemfaBox").hidden = !state.bemfa.on;
+        box.hidden = !state.bemfa.on;
         $("bemfaUid").value = state.bemfa.uid;
         renderBemfaTopics();
-        paintBemfaSection();   // 自定义模板下把开关与私钥框收起，只留说明卡
+        paintBemfaSection();
     }
     // 主题卡：既显示话题，又是复制按钮，点完就地变「已复制」
     function renderBemfaTopics() {
