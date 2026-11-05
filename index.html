@@ -228,6 +228,7 @@
     .act-btn.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: 0 0 0 1px var(--line), 0 0 0 2px rgba(var(--accent-rgb), .18), 0 4px 14px var(--shadow-2); }
     .act-icon { font-size: 24px; line-height: 1; }
     .act-text { font-size: 12px; font-weight: 600; white-space: nowrap; }
+    #btnCompile[hidden] { display: none !important; }
 
     .sheet-mask { position: fixed; inset: 0; background: var(--mask); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 30; }
     .sheet-mask.show { opacity: 1; pointer-events: auto; }
@@ -777,15 +778,15 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
                 <span class="act-icon">📄</span>
                 <span class="act-text">配置</span>
             </button>
-            <!-- 编译：调用 esphome-compiler 在线服务，提交当前 YAML 并轮询编译结果 -->
-            <button class="act-btn" id="btnCompile">
+            <!-- 编译入口已并入烧录页（页内「开始编译」），这个按钮不再显示，仅作程序入口 -->
+            <button class="act-btn" id="btnCompile" hidden>
                 <span class="act-icon">🛠️</span>
                 <span class="act-text">编译</span>
             </button>
-            <!-- 烧录：页内卡片，用 Web Serial + esptool-js 直接刷固件，不弹任何窗口 -->
+            <!-- 编译 + 烧录：页内卡片，先编译再烧录或 OTA 推送，不弹任何窗口 -->
             <button class="act-btn" id="btnFlash">
                 <span class="act-icon">⚡</span>
-                <span class="act-text">烧录</span>
+                <span class="act-text">编译·烧录</span>
             </button>
         </div>
     </footer>
