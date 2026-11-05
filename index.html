@@ -1266,7 +1266,8 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             btn.className = "card board" + (isSel ? " on" : "") + (locked ? " locked" : "");
             btn.innerHTML = isCustom
                 ? '<span class="name">自定义</span><span class="sub">手动输入 MB</span>'
-                : '<span class="name">' + sz + (sz === "4MB" ? "（默认）" : "") + '</span>';
+                : '<span class="name">' + sz + (sz === "4MB" ? "（默认）" : "") + '</span>' +
+                  (sz === "1MB" ? '<span class="sub">OTA 上限 508 KB</span>' : '');
             btn.addEventListener("click", () => {
                 if (locked) { showToast("CMPOWER 整机使用固定 FLASH，不可修改"); return; }
                 state.flash[state.chip] = sz;
@@ -3432,6 +3433,11 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             showToast("先点「编译」生成固件，再来取 OTA 镜像");
             return;
         }
+        if (flashState.otaTooBig) {
+            showToast("固件 " + fmtSize(flashState.compiled.blob.size) + " 超过 OTA 上限 " +
+                Math.round((flashState.otaMax || 520192) / 1024) + " KB，网页 OTA 会失败，请用串口刷", 6000);
+            return;
+        }
         try {
             const head = new Uint8Array(await flashState.zipBlob.slice(0, 4).arrayBuffer());
             if (!(head[0] === 0x50 && head[1] === 0x4B)) {
@@ -3540,12 +3546,27 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         flashState.binUrl = URL.createObjectURL(res.blob);
         flashState.compiledYaml = res.yaml;
         flashState.err = "";
+        // 1MB 设备的 OTA 槽只有 508 KB，固件超了就别走网页 OTA（会写到一半失败）
+        const mb = flashMbNow();
+        const otaMax = mb >= 2 ? 1048576 : 520192;
+        flashState.otaTooBig = res.blob.size > otaMax;
+        flashState.otaMax = otaMax;
         // 状态条若还开着（比如在烧录卡片里重新编译过），同步刷新它的完成文案
         const bar = $("compileStatus");
         if (bar && bar.classList.contains("show")) {
-            setCompileMsg("编译完成 · firmware.bin " + fmtSize(res.blob.size) + " ↓");
+            setCompileMsg("编译完成 · firmware.bin " + fmtSize(res.blob.size) +
+                (flashState.otaTooBig
+                    ? " ⚠ 超过 " + Math.round(otaMax / 1024) + " KB 的 OTA 上限，只能串口刷"
+                    : " ↓"));
             compileActions("done");
         }
+    }
+
+    // 当前芯片选的 FLASH 容量（MB）：自定义时读手填数字
+    function flashMbNow() {
+        const v = state.flash[state.chip];
+        if (v === "custom") return parseFloat(state.customFlash[state.chip]) || 0;
+        return parseFloat(v) || 0;
     }
 
     async function smartCompile() {
