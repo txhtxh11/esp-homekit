@@ -2892,6 +2892,7 @@ function parseTplTopics(yaml) {
             L.push("  - source:");
             L.push("      type: git");
             L.push("      url: https://github.com/txhtxh11/cmpower");
+            L.push("      refresh: 0s          # 每次编译都拉最新代码，避免用到缓存的旧组件");
             L.push("    components: [homekit, sy7t609]");
             L.push("");
             L.push("wifi:");
