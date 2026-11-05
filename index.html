@@ -1338,12 +1338,17 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         ["bemfa", "巴法云", "手机远程 MQTT"]
     ];
     let featOpen = false;
-    function renderFeatures() {
-        // 配对码卡片跟着 HomeKit 开关走：关掉 HomeKit 就没有配对码可配了
+    // 二级块（配对码 / 巴法云 / 日志）：既要自身开关开着，也要功能模块展开
+    function paintFeatureSections() {
         const hkSec = $("hkSection");
-        if (hkSec) hkSec.hidden = !feat("homekit");
+        if (hkSec) hkSec.hidden = !featOpen || !feat("homekit");
         const logSec = $("logSection");
-        if (logSec) logSec.hidden = !feat("weblog");
+        if (logSec) logSec.hidden = !featOpen || !feat("weblog");
+        paintBemfaSection();
+    }
+
+    function renderFeatures() {
+        paintFeatureSections();
         const box = $("featGrid");
         if (!box) return;
         box.innerHTML = "";
@@ -1351,7 +1356,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         // 标题卡：点一下展开 / 收起下面的功能开关
         const head = document.createElement("button");
         head.type = "button";
-        head.className = "card board";
+        head.className = "card";   // 与上方芯片卡同高（88px）
         head.style.gridColumn = "1 / -1";
         head.innerHTML = '<span class="name">功能模块</span><span class="sub">已开 ' + on + '/' + FEATURE_LIST.length +
             (featOpen ? " · 收起" : " · 展开") + '</span>';
@@ -1633,7 +1638,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         const d = cmDev();
         const custom = !!(d && !CM_TYPES[d.type]);
         const sec = $("bemfaSection"), box = $("bemfaBox"), lock = $("bemfaLocked"), hint = $("bemfaHint");
-        if (sec) sec.hidden = !(custom || state.bemfa.on);   // 二级配置：只有开着或模板模式才出现
+        if (sec) sec.hidden = !featOpen || !(custom || state.bemfa.on);   // 展开 + 自身开着才出现
         if (box) box.hidden = custom ? false : !state.bemfa.on;
         if (lock) lock.hidden = true;
         if (hint) hint.textContent = custom ? "模板内主题" : "手机远程";
