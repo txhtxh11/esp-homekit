@@ -2162,7 +2162,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
        巴法云的限制：主题名的后三位决定设备类型（006 开关 / 004 传感器），App 订阅的是裸话题名，
        ESPHome 的实体话题对不上，所以统一用裸话题 + on_message/mqtt.publish（见 buildYaml）。
        一台设备一个私钥：client_id 也是私钥，两个设备同私钥会互相把对方顶下线。 */
-    const BEMFA_PREFIX = "eh";   // 话题前缀固定，App 里显示的是主题昵称，话题名本身看不见
+    const BEMFA_PREFIX = "";   // 不加前缀：主题名就是「设备名 + 类型码」
     // 私钥很長，刷新页面丢了很烦：和整机模板一样存在本机浏览器里
     function bemfaSave() {
         try { localStorage.setItem("eh-bemfa", JSON.stringify(state.bemfa)); } catch (e) { }
@@ -2177,7 +2177,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     }
     // 主题名固定跟「设备名 + MAC 后缀」走（就是 ESPHome 里那个自动加后缀的名字），
     // 同一个设备无论怎么重加卡片，主题都不会变；同类型的第 2 个实体起加序号区分。
-    function bmSan(s) { return String(s || "").replace(/[^A-Za-z0-9]/g, ""); }
+    function bmSan(s) { return String(s || "").replace(/[^A-Za-z0-9_]/g, ""); }   // 巴法只允许字母/数字/下划线
     function bmBaseName() { return bmSan(state.nodeName || "esp_homekit_device") + bmSan(state.macSuffix || ""); }
     function bemfaTopic(n, suffix) {
         // 巴法主题只接受字母和数字，且必须以后三位类型码结尾
