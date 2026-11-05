@@ -1298,7 +1298,7 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         ["portal", "配网热点", "断网自动开热点"],
         ["ota", "OTA", "空中升级"],
         ["restore", "状态记忆", "断电记住开关"],
-        ["weblog", "日志", "网页与串口输出"],
+        ["weblog", "日志", "串口与网页输出"],
         ["homekit", "HomeKit", "苹果家庭直连"],
         ["bemfa", "巴法云", "手机远程 MQTT"]
     ];
@@ -3303,9 +3303,12 @@ function parseTplTopics(yaml) {
             G.push("captive_portal:");
             G.push("");
         }
-        G.push("logger:");
-        G.push("  level: " + state.logLevel);
-        G.push("");
+        // 日志开关：关掉就整段不生成（省 Flash，串口也没输出）
+        if (feat("weblog")) {
+            G.push("logger:");
+            G.push("  level: " + state.logLevel);
+            G.push("");
+        }
         if (feat("api")) {
             G.push("api:");
             G.push("  reboot_timeout: 0s");
