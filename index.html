@@ -4362,7 +4362,6 @@ function parseTplTopics(yaml) {
         otaBtn.addEventListener("click", () => otaPushByIp(ipInp.value));
         otaRow.appendChild(ipInp);
         otaRow.appendChild(otaBtn);
-        pick.appendChild(otaRow);
 
         // 固件状态、地址、下载、清空、开始烧录都在下面三张并排卡片里，不再单独占一行
         if (compileAbort) return;
@@ -4479,6 +4478,9 @@ function parseTplTopics(yaml) {
         };
         applyGo();
         pick.appendChild(bar);
+
+        // 有了固件才谈得上推送：OTA 行放在「开始编译 / 开始烧录」下面
+        pick.appendChild(otaRow);
     }
 
     // 「擦除」工具卡：选中即整卡高亮（不改文案，不加 ✓）
