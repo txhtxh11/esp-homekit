@@ -2075,16 +2075,24 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
         if (t.kind === "switch") {
             ioSection.innerHTML = '<label class="form-label">输出与状态</label>';
             const bootRow = document.createElement("div"); bootRow.className = "form-row";
-            bootRow.innerHTML = '<label class="form-label">初始电平</label>';
-            toggleCards(bootRow, dev.io.boot === "on",
-                { offSub: "低电平（上电关闭）", onSub: "高电平（上电开启）" },
-                v => { dev.io.boot = v ? "on" : "off"; });
+            // 初始电平：显示的「高/低电平」按当前是否反向输出计算，否则文案会自相矛盾
+            function paintBoot() {
+                const inv = !!dev.io.inverted;
+                bootRow.innerHTML = '<label class="form-label">初始电平</label>';
+                toggleCards(bootRow, dev.io.boot === "on",
+                    {
+                        offSub: inv ? "高电平（上电关闭）" : "低电平（上电关闭）",
+                        onSub: inv ? "低电平（上电开启）" : "高电平（上电开启）"
+                    },
+                    v => { dev.io.boot = v ? "on" : "off"; });
+            }
+            paintBoot();
             ioSection.appendChild(bootRow);
-
+            
             const invRow = document.createElement("div"); invRow.className = "form-row";
             invRow.innerHTML = '<label class="form-label">反向输出</label>';
             toggleCards(invRow, !!dev.io.inverted, { offSub: "常规输出", onSub: "反向输出" },
-                v => { dev.io.inverted = v; });
+                v => { dev.io.inverted = v; paintBoot(); });
             ioSection.appendChild(invRow);
         } else if (t.kind === "binary") {
             ioSection.innerHTML = '<label class="form-label">信号与状态</label>';
