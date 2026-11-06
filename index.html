@@ -1606,7 +1606,14 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
             dev.name = cmT.name;
         } else {
             // 名称带上序号（与 id 后缀一致），便于从名字区分同类设备
-            const n = dev.uid.slice(type.length + 1);
+            // 序号取同类设备里最小未占用的数字：删掉中间某路后，新加的会补空号
+            const usedSeq = new Set();
+            state.devices.filter(x => x.type === type).forEach(x => {
+                const mm = (x.name || "").match(/^(.*) (\d+)$/);
+                if (mm && mm[1] === t.name) usedSeq.add(Number(mm[2]));
+            });
+            let n = 1;
+            while (usedSeq.has(n)) n++;
             dev.name = t.name + " " + n;
             // 输出/信号方向与 WiFi 指示灯：反向输出开关关闭=常规、打开=反向；
             // 门磁/人体/按键类信号默认低电平触发（保持反向）
@@ -1626,8 +1633,18 @@ window.__API_BASE = /(^|\.)esp-homekit\.pages\.dev$/i.test(location.hostname) ? 
     }
 
     function deleteDevice(uid) {
+        const removedDev = state.devices.find(d => d.uid === uid);
         state.devices = state.devices.filter(d => d.uid !== uid);
         state.devices.forEach(d => { d.actions = d.actions.filter(a => a.target !== uid); });
+        // 删除后重排同类设备的默认名（只改「类型名 N」，用户自定义名不动）
+        if (removedDev && TYPES[removedDev.type]) {
+            const tn = TYPES[removedDev.type].name;
+            let k = 0;
+            state.devices.filter(d => d.type === removedDev.type).forEach(d => {
+                const mm = (d.name || "").match(/^(.*) (\d+)$/);
+                if (mm && mm[1] === tn) { k += 1; d.name = tn + " " + k; }
+            });
+        }
         renderChips(); renderTypes(); renderDevices();
         if (state.editingUid === uid) { state.editingUid = null; hideSheets(); }
     }
@@ -5355,6 +5372,7 @@ function parseTplTopics(yaml) {
         buildYaml: buildYaml,
         reverseTpl: tplReverseApply,
         clearTemplates: () => { state.cmTemplates = []; try { saveCmTemplates(); } catch (e) { } renderTypes(); },
+        delDevice: (uid) => deleteDevice(uid),
         saveBackTpl: tplSaveBack,
         getState: () => state,
         setChip: chip => { state.chip = chip; },
